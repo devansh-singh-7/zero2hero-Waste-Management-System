@@ -8,6 +8,7 @@ import { Leaf } from "lucide-react"
 import Link from "next/link"
 import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/components/providers/AuthProvider'
 
 export default function SignUp() {
   const [name, setName] = useState('')
@@ -15,11 +16,16 @@ export default function SignUp() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const { login } = useAuth()
 
   const handleSignup = async () => {
     setLoading(true)
     try {
       // Client-side validation
+      if (!name.trim()) {
+        toast.error('Name is required')
+        return
+      }
       if (!email) {
         toast.error('Email is required')
         return
@@ -33,12 +39,13 @@ export default function SignUp() {
         return
       }
 
+      // Create the user account
       const res = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: name.trim() || undefined,
-          email: email.trim() || undefined,
+          name: name.trim(),
+          email: email.trim(),
           password
         }),
       })
@@ -48,27 +55,40 @@ export default function SignUp() {
       if (!res.ok) {
         if (res.status === 422) {
           // Validation error
-          if (data.details) {
-            const messages = Object.values(data.details).filter(Boolean)
-            toast.error(messages.join('. '))
-          } else {
-            toast.error(data.error || 'Validation failed')
+          if (data.details?.email) {
+            toast.error(data.details.email)
+          }
+          if (data.details?.password) {
+            toast.error(data.details.password)
           }
         } else if (res.status === 409) {
-          // Conflict - already exists
-          toast.error(data.error || 'User already exists')
+          toast.error('Email already registered')
         } else {
-          // Other errors
-          toast.error(data.error || 'Sign up failed')
+          toast.error(data.error || 'Failed to create account')
         }
         return
       }
 
+      // Account created successfully, now auto-login the user
       toast.success('Account created successfully!')
-      router.push('/auth/signin')
-    } catch (e: any) {
-      toast.error('An error occurred. Please try again.')
-      console.error('Signup error:', e)
+      
+      // Automatically log in the user with their credentials
+      await login(email.trim(), password)
+      
+      // Store user email for compatibility
+      localStorage.setItem('userEmail', email.trim())
+      
+      // Redirect to home page and refresh
+      router.push('/')
+      router.refresh()
+      
+      // Fallback refresh
+      setTimeout(() => {
+        window.location.href = '/'
+      }, 500)
+    } catch (error: any) {
+      toast.error(error.message || 'An error occurred. Please try again.')
+      console.error('Signup error:', error)
     } finally {
       setLoading(false)
     }
@@ -88,12 +108,18 @@ export default function SignUp() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Input placeholder="Name (optional)" value={name} onChange={e => setName(e.target.value)} />
+          <Input 
+            placeholder="Full Name (required)" 
+            value={name} 
+            onChange={e => setName(e.target.value)}
+            required
+          />
           <Input 
             placeholder="Email address" 
             type="email"
             value={email} 
             onChange={e => setEmail(e.target.value)}
+            required
           />
           <Input 
             placeholder="Password (required)" 

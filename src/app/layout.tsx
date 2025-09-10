@@ -7,7 +7,7 @@ import Header from "@/components/Header"
 import Sidebar from "@/components/Sidebar"
 import 'leaflet/dist/leaflet.css'
 import { Toaster } from 'react-hot-toast'
-
+import { AuthProvider } from "@/components/providers/AuthProvider"
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -21,6 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
+        <AuthProvider>
           <div className="min-h-screen bg-gray-50 flex flex-col">
             <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
             <div className="flex flex-1">
@@ -31,6 +32,7 @@ export default function RootLayout({
             </div>
           </div>
           <Toaster />
+        </AuthProvider>
       </body>
     </html>
   )

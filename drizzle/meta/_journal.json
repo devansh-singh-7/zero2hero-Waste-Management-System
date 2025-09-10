@@ -1,20 +1,12 @@
 {
-  "version": "7",
-  "dialect": "postgresql",
+  "version": "5",
+  "dialect": "pg",
   "entries": [
     {
-      "idx": 0,
-      "version": "7",
-      "when": 1754663533638,
-      "tag": "0000_special_silver_centurion",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1755610905245,
-      "tag": "0001_allow-anonymous-reports",
-      "breakpoints": true
+      "tag": "0010_add_user_provider",
+      "description": "Add user provider columns",
+      "hash": "43e9183ccf4b3e4a8e7f4f6b3e4a8e7f",
+      "created": "2025-08-24T12:00:00.000Z"
     }
   ]
 }

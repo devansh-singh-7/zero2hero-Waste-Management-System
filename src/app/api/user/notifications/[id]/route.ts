@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/customAuth'
-import { markNotificationAsRead } from '@/utils/db/actions'
+import { markNotificationAsRead } from '@/lib/db/actions'
+
+export const dynamic = 'force-dynamic'
 
 export async function PATCH(
   request: NextRequest,
@@ -9,7 +11,7 @@ export async function PATCH(
   try {
     const user = await getAuthUser(request)
     
-    if (!session?.user?.email) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

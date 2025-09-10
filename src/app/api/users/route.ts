@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { users } from '@/lib/db/schema'
+import { Users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { hashPassword } from '@/lib/customAuth'
 
@@ -21,11 +21,12 @@ export async function POST(request: NextRequest) {
     const { name, email, password } = body;
     
     // Validate input
-    if (!email || !password) {
+    if (!email || !password || !name) {
       console.log('Validation failed: Missing required fields');
       return NextResponse.json({ 
         error: 'Validation failed',
         details: {
+          name: !name ? 'Name is required' : undefined,
           email: !email ? 'Email is required' : undefined,
           password: !password ? 'Password is required' : undefined
         }
@@ -52,7 +53,13 @@ export async function POST(request: NextRequest) {
     // Check existing user
     try {
       console.log('Checking existing email');
-      const [existingUser] = await db.select().from(users).where(eq(users.email, email));
+      const [existingUser] = await db.select({
+        id: Users.id,
+        email: Users.email
+      })
+      .from(Users)
+      .where(eq(Users.email, email));
+
       if (existingUser) {
         console.log('Email already registered');
         return NextResponse.json({ error: 'Email already registered' }, { status: 409 });
@@ -67,23 +74,35 @@ export async function POST(request: NextRequest) {
 
     // Create new user
     console.log('Creating new user');
-    let created;
     try {
-      const insertResult = await db.insert(users).values({
-        name: name || null,
+      // Hash the password
+      const hashedPassword = await hashPassword(password);
+
+      // Create the user
+      const [newUser] = await db.insert(Users).values({
         email: email,
-        password_hash: hashPassword(password),
-      }).returning();
+        name: name,
+        password_hash: hashedPassword,
+        createdAt: new Date()
+      }).returning({
+        id: Users.id,
+        name: Users.name,
+        email: Users.email
+      });
 
-      created = insertResult && insertResult[0];
-
-      if (!created || !created.id) {
-        console.error('User creation failed - no user returned');
-        return NextResponse.json({ 
-          error: 'Failed to create user',
-          details: 'Database operation succeeded but no user was created'
-        }, { status: 500 });
+      if (!newUser?.id) {
+        throw new Error('User creation failed - no user returned');
       }
+
+      console.log('User created successfully:', newUser.id);
+      
+      // Create successful response
+      return NextResponse.json({ 
+        id: newUser.id, 
+        name: newUser.name, 
+        email: newUser.email 
+      }, { status: 201 });
+
     } catch (e) {
       console.error('Error creating user:', e);
       return NextResponse.json({ 
@@ -91,13 +110,6 @@ export async function POST(request: NextRequest) {
         details: e instanceof Error ? e.message : 'Unknown database error'
       }, { status: 500 });
     }
-
-    console.log('User created successfully:', created.id);
-    return NextResponse.json({ 
-      id: created.id, 
-      name: created.name, 
-      email: created.email
-    });
 
   } catch (error: unknown) {
     console.error('Sign up error:', error);

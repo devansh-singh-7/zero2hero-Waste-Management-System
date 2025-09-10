@@ -6,19 +6,22 @@ import { useEffect, useState } from 'react'
 export default function AuthCheck({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   useEffect(() => {
     async function checkAuth() {
       try {
         const res = await fetch('/api/user/profile')
-        if (!res.ok) {
+        if (res.ok) {
+          setIsAuthenticated(true)
+        } else {
           router.push('/auth/signin')
-          return
         }
-        setIsLoading(false)
       } catch (error) {
         console.error('Auth check failed:', error)
         router.push('/auth/signin')
+      } finally {
+        setIsLoading(false)
       }
     }
 
@@ -33,5 +36,5 @@ export default function AuthCheck({ children }: { children: React.ReactNode }) {
     )
   }
 
-  return <>{children}</>
+  return isAuthenticated ? <>{children}</> : null
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { updateTaskStatus } from '@/utils/db/actions'
+import { updateTaskStatus } from '@/lib/db/actions'
 
 export async function PUT(
   request: NextRequest,
@@ -15,7 +15,13 @@ export async function PUT(
       return NextResponse.json({ error: 'Failed to update task status' }, { status: 400 })
     }
     
-    return NextResponse.json(updatedTask)
+    // Serialize dates for JSON response
+    const serializedTask = {
+      ...updatedTask,
+      createdAt: updatedTask.createdAt?.toISOString()
+    }
+    
+    return NextResponse.json(serializedTask)
   } catch (error) {
     console.error('Error updating task status:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

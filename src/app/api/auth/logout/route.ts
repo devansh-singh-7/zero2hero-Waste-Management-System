@@ -1,9 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
-  const res = NextResponse.json({ ok: true })
-  res.cookies.set('auth_token', '', { path: '/', maxAge: 0 })
-  return res
+  const response = NextResponse.json({ success: true });
+  
+  // Clear the auth cookie
+  response.cookies.set('auth-token', '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 0
+  });
+  
+  return response;
 }
 
 

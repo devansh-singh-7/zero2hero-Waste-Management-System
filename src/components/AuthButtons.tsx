@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { User, ChevronDown, LogIn, LogOut } from 'lucide-react'
@@ -15,11 +16,16 @@ export default function AuthButtons() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch('/api/user/profile')
+        const res = await fetch('/api/user/profile', {
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json'
+          }
+        })
         if (res.ok) {
           const userData = await res.json()
           setUser(userData)
-        } else {
+        } else if (res.status === 401) {
           setUser(null)
         }
       } catch (error) {
@@ -82,9 +88,8 @@ export default function AuthButtons() {
               <span className="font-medium">{user.name || user.email}</span>
             </DropdownMenuItem>
             <DropdownMenuItem>
-              <Link href="/settings">Profile</Link>
+              <Link href="/settings">Settings</Link>
             </DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
             <DropdownMenuItem onClick={handleSignOut}>Sign Out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

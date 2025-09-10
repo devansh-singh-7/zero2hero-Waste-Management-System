@@ -8,7 +8,23 @@ const nextConfig = {
   },
   env: {
     DATABASE_URL: process.env.DATABASE_URL,
-    NEXT_PUBLIC_GEMINI_API_KEY: process.env.NEXT_PUBLIC_GEMINI_API_KEY,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+  },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        net: false,
+        tls: false,
+        perf_hooks: false,
+        fs: false,
+        child_process: false,
+        dgram: false,
+        dns: false,
+        module: false,
+      };
+    }
+    return config;
   },
 };
 

@@ -1,14 +1,14 @@
 import Link from "next/link"
 import { usePathname } from 'next/navigation'
 import { Button } from "@/components/ui/button"
-import { MapPin, Trash, Coins, Medal, Settings, Home, Car } from "lucide-react"
+import { MapPin, Coins, Medal, Settings, Home, User } from "lucide-react"
 
 const sidebarItems = [
   { href: "/", icon: Home, label: "Home" },
-  { href: "/report", icon: MapPin, label: "Report Waste" },
-  { href: "/collect", icon: Trash, label: "Collect Waste" },
+  { href: "/rewards/report", icon: MapPin, label: "Report Waste" },
   { href: "/rewards", icon: Coins, label: "Rewards" },
   { href: "/leaderboard", icon: Medal, label: "Leaderboard" },
+  { href: "/profile", icon: User, label: "Profile" },
 ]
 
 interface SidebarProps {
@@ -38,7 +38,7 @@ export default function Sidebar({ open }: SidebarProps) {
             </Link>
           ))}
         </div>
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-gray-200 space-y-2">
           <Link href="/settings" passHref>
             <Button 
               variant={pathname === "/settings" ? "secondary" : "outline"}

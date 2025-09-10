@@ -8,29 +8,36 @@ import { Leaf } from "lucide-react"
 import Link from "next/link"
 import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/components/providers/AuthProvider'
 
 export default function SignIn() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const { login } = useAuth()
 
   const handleLogin = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password }),
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || 'Login failed')
-      }
-      const user = await res.json()
-      if (user?.email) localStorage.setItem('userEmail', user.email)
-      toast.success('Signed in')
+      await login(email.trim(), password)
+      
+      // Store user email in localStorage for compatibility
+      localStorage.setItem('userEmail', email.trim())
+      
+      toast.success('Signed in successfully!')
+      
+      // Redirect to home page
       router.push('/')
+      
+      // Force refresh of the window to ensure all components reload properly
+      // This ensures notifications, user dropdown, and impact data are loaded correctly
+      router.refresh()
+      
+      // As a fallback, also trigger a page reload after a short delay
+      setTimeout(() => {
+        window.location.href = '/'
+      }, 500)
     } catch (e: any) {
       toast.error(e.message || 'Login failed')
     } finally {
@@ -73,3 +80,4 @@ export default function SignIn() {
   )
 }
 
+  

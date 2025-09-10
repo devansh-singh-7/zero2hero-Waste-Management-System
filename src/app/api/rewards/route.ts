@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/customAuth'
-import { getAllRewards, getAvailableRewards, getRewardTransactions, saveReward } from '@/utils/db/actions'
+import { getAllRewards, getAvailableRewards, getRewardTransactions, saveReward } from '@/lib/db/actions'
+
+export const dynamic = 'force-dynamic'
 
 // Custom rewards data - these will be available to all users
 const CUSTOM_REWARDS = [
@@ -218,17 +220,83 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, amount } = await request.json()
-    
-    const reward = await saveReward(userId, amount)
-    
-    if (!reward) {
-      return NextResponse.json({ error: 'Failed to save reward' }, { status: 400 })
+    const user = await getAuthUser(request)
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const { rewardId, rewardTitle, tokensSpent } = await request.json()
     
-    return NextResponse.json(reward)
+    if (!rewardId || !rewardTitle || !tokensSpent) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    // Import database components
+    const { db } = require('@/lib/db')
+    const { Users, Transactions, RedeemedRewards } = require('@/lib/db/schema')
+    const { eq } = require('drizzle-orm')
+
+    // Check if user has sufficient balance
+    const userResult = await db.select().from(Users).where(eq(Users.id, user.id))
+    if (!userResult.length) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    const currentBalance = userResult[0].balance || 0
+    if (currentBalance < tokensSpent) {
+      return NextResponse.json({ 
+        error: 'Insufficient tokens',
+        required: tokensSpent,
+        current: currentBalance
+      }, { status: 400 })
+    }
+
+    // Check if reward is already redeemed
+    const existingRedemption = await db
+      .select()
+      .from(RedeemedRewards)
+      .where(eq(RedeemedRewards.userId, user.id))
+      .where(eq(RedeemedRewards.rewardId, rewardId))
+
+    if (existingRedemption.length > 0) {
+      return NextResponse.json({ error: 'Reward already redeemed' }, { status: 400 })
+    }
+
+    // Start transaction
+    await db.transaction(async (tx: any) => {
+      // Deduct tokens from user balance
+      await tx
+        .update(Users)
+        .set({ balance: currentBalance - tokensSpent })
+        .where(eq(Users.id, user.id))
+
+      // Record the transaction
+      await tx.insert(Transactions).values({
+        userId: user.id,
+        type: 'redeemed',
+        amount: -tokensSpent,
+        description: `Redeemed reward: ${rewardTitle}`,
+        date: new Date()
+      })
+
+      // Record the redeemed reward
+      await tx.insert(RedeemedRewards).values({
+        userId: user.id,
+        rewardId,
+        rewardTitle,
+        tokensSpent,
+        redeemedAt: new Date()
+      })
+    })
+
+    return NextResponse.json({ 
+      message: 'Reward redeemed successfully!',
+      newBalance: currentBalance - tokensSpent,
+      rewardTitle
+    })
+
   } catch (error) {
-    console.error('Error saving reward:', error)
+    console.error('Error redeeming reward:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
