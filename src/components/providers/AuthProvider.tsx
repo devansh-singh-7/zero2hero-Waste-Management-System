@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 
 interface User {
   id: number;
@@ -24,13 +24,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Check if user is logged in on mount
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     try {
+      // Check localStorage first for faster initial load
+      const cachedUser = localStorage.getItem('user');
+      if (cachedUser) {
+        try {
+          setUser(JSON.parse(cachedUser));
+          setLoading(false);
+        } catch (e) {
+          localStorage.removeItem('user');
+        }
+      }
+
       const response = await fetch('/api/auth/check');
       if (!response.ok) {
         throw new Error(`Authentication check failed: ${response.status}`);
@@ -58,7 +64,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    // Check if user is logged in on mount
+    checkAuth();
+  }, [checkAuth]);
 
   const login = async (email: string, password: string) => {
     try {

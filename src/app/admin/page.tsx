@@ -105,12 +105,15 @@ export default function AdminDashboard() {
           totalTokensDistributed: usersArray.reduce((sum: number, user: any) => sum + (user.balance || 0), 0)
         })
 
-        console.log('Dashboard stats updated from platform API:', {
-          users: platformStats.totalUsers,
-          reports: platformStats.totalReports,
-          pending: pendingTasks,
-          completed: completedTasks
-        })
+        // Only log stats in development mode and limit frequency
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Dashboard stats updated:', {
+            users: platformStats.totalUsers,
+            reports: platformStats.totalReports,
+            pending: pendingTasks,
+            completed: completedTasks
+          })
+        }
       } else {
         throw new Error('Failed to fetch platform stats')
       }

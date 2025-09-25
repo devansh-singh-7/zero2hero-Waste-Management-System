@@ -1,7 +1,10 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { Send, Loader2 } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 
 type Message = {
   role: 'user' | 'assistant'
@@ -9,11 +12,22 @@ type Message = {
 }
 
 export default function MessagesPage() {
+  const { user } = useAuth();
+  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const requireAuth = (action: string) => {
+    if (!user) {
+      toast.error(`Please sign in to ${action}`);
+      router.push('/auth/signin?from=' + encodeURIComponent(window.location.pathname));
+      return false;
+    }
+    return true;
+  };
 
   useEffect(() => {
     const API_KEY = process.env.GEMINI_API_KEY
@@ -27,6 +41,11 @@ export default function MessagesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!input.trim() || isLoading) return
+
+    // Check authentication before sending message
+    if (!requireAuth('send messages')) {
+      return;
+    }
 
     setIsLoading(true)
     setError('')

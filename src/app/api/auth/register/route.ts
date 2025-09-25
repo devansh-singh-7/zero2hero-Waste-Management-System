@@ -43,13 +43,13 @@ export async function POST(request: NextRequest) {
 
     try {
       // Hash password and create user
-      const password_hash = await hashPassword(password);
+      const hashedPassword = await hashPassword(password);
       const [user] = await db.insert(Users)
         .values({
           name: name || email.split('@')[0],
           email,
-          password_hash,
-          createdAt: new Date(), // Using correct column name
+          password: hashedPassword,
+          createdAt: new Date(),
         })
         .returning({
           id: Users.id,

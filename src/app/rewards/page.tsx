@@ -284,8 +284,7 @@ export default function RewardsPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <Trophy className="h-12 w-12 text-green-600 mx-auto mb-4 animate-pulse" />
-          <p className="text-gray-600">Loading rewards...</p>
+          <Trophy className="h-8 w-8 text-blue-500 mx-auto animate-spin" />
         </div>
       </div>
     )

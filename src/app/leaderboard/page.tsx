@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Loader, Award, User, Trophy, Crown, Medal, Star } from 'lucide-react'
+import { Loader, Award, User, Trophy, Crown, Medal, Star, AlertCircle } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
 type LeaderboardUser = {
@@ -17,30 +17,62 @@ type LeaderboardUser = {
 export default function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [debugInfo, setDebugInfo] = useState<any>(null)
+
+  const fetchLeaderboard = async () => {
+    try {
+      console.log('🔄 Starting leaderboard fetch...')
+      setLoading(true)
+      setError(null)
+      
+      const response = await fetch('/api/leaderboard', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        cache: 'no-store'
+      })
+      
+      console.log('📡 Response status:', response.status)
+      console.log('📡 Response ok:', response.ok)
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('📦 Received data:', data)
+        console.log('👥 Leaderboard array:', data.leaderboard)
+        console.log('📊 Total users:', data.totalUsers)
+        
+        if (data.leaderboard && Array.isArray(data.leaderboard)) {
+          setLeaderboard(data.leaderboard)
+          setDebugInfo({
+            totalUsers: data.totalUsers,
+            hasData: data.leaderboard.length > 0,
+            lastUpdated: data.lastUpdated
+          })
+          console.log('✅ Leaderboard state updated with', data.leaderboard.length, 'users')
+        } else {
+          console.log('⚠️ Invalid leaderboard data structure')
+          setError('Invalid data format received')
+        }
+      } else {
+        const errorData = await response.json()
+        console.error('❌ API Error:', errorData)
+        setError(`Failed to load leaderboard: ${errorData.error || 'Unknown error'}`)
+        toast.error('Failed to load leaderboard.')
+      }
+    } catch (err) {
+      console.error('❌ Fetch error:', err)
+      const errorMessage = err instanceof Error ? err.message : String(err)
+      setError(`Network error: ${errorMessage}`)
+      toast.error('An error occurred while loading leaderboard.')
+    } finally {
+      setLoading(false)
+      console.log('🏁 Leaderboard fetch completed')
+    }
+  }
 
   useEffect(() => {
-    const fetchLeaderboard = async () => {
-      setLoading(true)
-      try {
-        const response = await fetch('/api/leaderboard', {
-          headers: {
-            'Cache-Control': 'no-cache'
-          }
-        })
-        if (response.ok) {
-          const data = await response.json()
-          setLeaderboard(data.leaderboard || [])
-        } else {
-          toast.error('Failed to load leaderboard.')
-        }
-      } catch (error) {
-        console.error('Error fetching leaderboard:', error)
-        toast.error('An error occurred while loading leaderboard.')
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchLeaderboard()
   }, [])
 
@@ -69,16 +101,44 @@ export default function LeaderboardPage() {
         <h1 className="text-3xl font-bold text-gray-800">Leaderboard</h1>
       </div>
       
+      {/* Debug Info */}
+      {debugInfo && (
+        <div className="mb-4 p-3 bg-gray-100 rounded text-sm">
+          <strong>Debug Info:</strong> Total Users: {debugInfo.totalUsers}, 
+          Has Data: {debugInfo.hasData ? 'Yes' : 'No'}, 
+          Last Updated: {debugInfo.lastUpdated}
+        </div>
+      )}
+      
       {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader className="animate-spin h-8 w-8 text-gray-500" />
-          <span className="ml-2 text-gray-500">Loading rankings...</span>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <Trophy className="h-8 w-8 text-blue-500 mx-auto animate-spin" />
+            <p className="mt-4 text-gray-600">Loading leaderboard...</p>
+          </div>
+        </div>
+      ) : error ? (
+        <div className="text-center py-12">
+          <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
+          <p className="text-red-600 text-lg font-semibold mb-2">Error Loading Data</p>
+          <p className="text-red-500 mb-4">{error}</p>
+          <button 
+            onClick={fetchLeaderboard} 
+            className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+          >
+            Try Again
+          </button>
         </div>
       ) : leaderboard.length === 0 ? (
         <div className="text-center py-12">
           <User className="h-16 w-16 text-gray-300 mx-auto mb-4" />
           <p className="text-gray-500 text-lg">No users found yet.</p>
           <p className="text-gray-400">Be the first to make an impact!</p>
+          <div className="mt-4 p-4 bg-gray-100 rounded text-sm text-gray-600">
+            <p>Debug: Leaderboard array length: {leaderboard.length}</p>
+            <p>Loading: {loading ? 'true' : 'false'}</p>
+            <p>Error: {error || 'none'}</p>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">

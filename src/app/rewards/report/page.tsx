@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { MapPin, Upload, CheckCircle, Loader } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'react-hot-toast'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/components/providers/AuthProvider'
 import dynamic from 'next/dynamic'
 
 // Import LocationPicker dynamically to avoid SSR issues with Leaflet
@@ -30,12 +32,23 @@ interface VerificationResult {
 }
 
 export default function ReportPage() {
+  const { user } = useAuth();
+  const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [verificationStatus, setVerificationStatus] = useState<'idle' | 'verifying' | 'success' | 'failure'>('idle');
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const requireAuth = (action: string) => {
+    if (!user) {
+      toast.error(`Please sign in to ${action}`);
+      router.push('/auth/signin?from=' + encodeURIComponent(window.location.pathname));
+      return false;
+    }
+    return true;
+  };
 
   const handleLocationSelect = (location: { lat: number; lng: number }) => {
     setLocation(location);
@@ -64,6 +77,11 @@ export default function ReportPage() {
   };
 
   const handleVerify = async () => {
+    // Check authentication before allowing verification
+    if (!requireAuth('verify waste')) {
+      return;
+    }
+    
     if (!file) {
       toast.error('Please upload an image first');
       return;
@@ -130,6 +148,12 @@ export default function ReportPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check authentication before allowing submission
+    if (!requireAuth('submit a waste report')) {
+      return;
+    }
+    
     if (!location) {
       toast.error('Please enter a location');
       return;
@@ -209,149 +233,232 @@ export default function ReportPage() {
   };
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-semibold mb-6 text-gray-800">Report Waste</h1>
-      
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-lg">
-        <div className="mb-8">
-          <label htmlFor="waste-image" className="block text-lg font-medium text-gray-700 mb-2">
-            Upload Waste Image
-          </label>
-          <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-green-500 transition-colors duration-300">
-            <div className="space-y-1 text-center">
-              <Upload className="mx-auto h-12 w-12 text-gray-400" />
-              <div className="flex text-sm text-gray-600">
-                <label
-                  htmlFor="waste-image"
-                  className="relative cursor-pointer bg-white rounded-md font-medium text-green-600 hover:text-green-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-green-500"
-                >
-                  <span>Upload a file</span>
-                  <input id="waste-image" name="waste-image" type="file" className="sr-only" onChange={handleFileChange} accept="image/*" />
-                </label>
-                <p className="pl-1">or drag and drop</p>
-              </div>
-              <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 p-4 md:p-8">
+      <div className="max-w-6xl mx-auto">
+        {/* Header Section */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-4">
+            Report Waste
+          </h1>
+          <p className="text-gray-600 text-lg">Upload, verify, and report waste to earn rewards while helping the environment</p>
         </div>
         
-        {preview && (
-          <div className="mt-4 mb-8">
-            <img src={preview} alt="Waste preview" className="max-w-full h-auto rounded-xl shadow-md" />
-          </div>
-        )}
-        
-        <Button 
-          type="button" 
-          onClick={handleVerify} 
-          className="w-full mb-8" 
-          variant="secondary"
-          disabled={!file || verificationStatus === 'verifying'}
-        >
-          {verificationStatus === 'verifying' ? (
-            <>
-              <Loader className="animate-spin -ml-1 mr-3 h-5 w-5" />
-              Verifying...
-            </>
-          ) : 'Verify Waste'}
-        </Button>
-
-        {verificationStatus === 'success' && verificationResult && (
-          <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-8 rounded-r-xl">
-            <div className="flex items-center">
-              <CheckCircle className="h-6 w-6 text-green-400 mr-3" />
-              <div className="w-full">
-                <h3 className="text-lg font-medium text-green-800">Verification Successful</h3>
-                <div className="mt-2 text-sm text-green-700">
-                  <p><strong>Waste Types Detected:</strong> {verificationResult.wasteType}</p>
-                  <p><strong>Total Quantity:</strong> {verificationResult.quantity}</p>
-                  <p><strong>Confidence:</strong> {(verificationResult.confidence * 100).toFixed(2)}%</p>
-                  {verificationResult.hazards && verificationResult.hazards !== 'None' && (
-                    <p><strong>Hazards:</strong> {verificationResult.hazards}</p>
-                  )}
-                  
-                  {verificationResult.breakdown && Object.keys(verificationResult.breakdown).length > 0 && (
-                    <div className="mt-3">
-                      <p className="font-medium">Breakdown by Category:</p>
-                      <div className="grid grid-cols-2 gap-2 mt-1">
-                        {Object.entries(verificationResult.breakdown).map(([type, amount]) => 
-                          amount && amount !== 'null' && (
-                            <div key={type} className="text-xs bg-white px-2 py-1 rounded">
-                              <span className="capitalize font-medium">{type}:</span> {amount}
-                            </div>
-                          )
-                        )}
-                      </div>
+        {/* Main Content Card */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/20 overflow-hidden">
+          <form onSubmit={handleSubmit} className="p-8">
+            
+            {/* Upload Section */}
+            <div className="mb-10">
+              <label htmlFor="waste-image" className="block text-xl font-semibold text-gray-800 mb-6 text-center">
+                Upload Waste Image
+              </label>
+              
+              {/* Enhanced Upload Area */}
+              <div className="relative group">
+                <div className="border-2 border-dashed border-green-300 rounded-2xl p-8 md:p-12 bg-gradient-to-br from-green-50 to-blue-50 hover:from-green-100 hover:to-blue-100 transition-all duration-300 group-hover:border-green-400 group-hover:shadow-lg">
+                  <div className="text-center space-y-4">
+                    {/* Upload Icon */}
+                    <div className="mx-auto w-20 h-20 bg-gradient-to-r from-green-100 to-blue-100 rounded-full flex items-center justify-center group-hover:from-green-200 group-hover:to-blue-200 transition-all duration-300">
+                      <Upload className="h-10 w-10 text-green-600 group-hover:scale-110 transition-transform duration-300" />
                     </div>
-                  )}
+                    
+                    {/* Upload Text */}
+                    <div className="space-y-3">
+                      <div className="text-gray-700">
+                        <label
+                          htmlFor="waste-image"
+                          className="cursor-pointer font-bold text-lg text-green-600 hover:text-green-700 transition-colors duration-200"
+                        >
+                          Upload a file
+                        </label>
+                        <span className="text-gray-500 text-lg"> or drag and drop</span>
+                      </div>
+                      <p className="text-sm text-gray-500 bg-white/60 rounded-full px-6 py-2 inline-block shadow-sm">
+                        PNG, JPG, GIF up to 10MB
+                      </p>
+                    </div>
+                    
+                    <input 
+                      id="waste-image" 
+                      name="waste-image" 
+                      type="file" 
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                      onChange={handleFileChange} 
+                      accept="image/*" 
+                    />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+            
+            {/* Image Preview Section */}
+            {preview && (
+              <div className="mb-10">
+                <h3 className="text-xl font-semibold text-gray-800 mb-6 text-center">Image Preview</h3>
+                <div className="flex justify-center">
+                  <div className="relative group max-w-lg w-full">
+                    {/* Decorative background */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-green-400 via-blue-400 to-purple-400 rounded-3xl opacity-20 group-hover:opacity-30 transition-opacity duration-300 transform rotate-1"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-400 via-pink-400 to-green-400 rounded-3xl opacity-15 group-hover:opacity-25 transition-opacity duration-300 transform -rotate-1"></div>
+                    
+                    {/* Main image */}
+                    <div className="relative bg-white p-3 rounded-3xl shadow-xl">
+                      <img 
+                        src={preview} 
+                        alt="Waste preview" 
+                        className="w-full h-auto max-h-96 object-cover rounded-2xl shadow-lg"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Verify Button */}
+            <div className="flex justify-center mb-10">
+              <Button 
+                type="button" 
+                onClick={handleVerify} 
+                className="bg-green-600 hover:bg-green-700 text-white px-10 py-3 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 min-w-64"
+                disabled={!file || verificationStatus === 'verifying'}
+              >
+                {verificationStatus === 'verifying' ? (
+                  <>
+                    <Loader className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
+                    Analyzing Waste...
+                  </>
+                ) : (
+                  <>
+                    Verify Waste with AI
+                  </>
+                )}
+              </Button>
+            </div>
 
-        <div className="mb-8">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Select Location
-          </label>
-          <div className="relative rounded-md h-[400px]">
-            <LocationPicker 
-              onLocationSelect={handleLocationSelect} 
-              initialLocation={location || undefined}
-            />
-          </div>
-          {location && (
-            <p className="mt-2 text-sm text-gray-600">
-              Selected location: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
-            </p>
-          )}
+            {/* Enhanced Verification Results */}
+            {verificationStatus === 'success' && verificationResult && (
+              <div className="mb-10 bg-gradient-to-r from-green-100 via-emerald-100 to-green-100 border-2 border-green-200 rounded-3xl p-8 shadow-lg">
+                <div className="text-center mb-6">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500 rounded-full mb-4">
+                    <CheckCircle className="h-8 w-8 text-white" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-green-800">AI Verification Complete!</h3>
+                </div>
+                
+                {/* Results Grid */}
+                <div className="grid md:grid-cols-3 gap-6 mb-6">
+                  <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 text-center shadow-md">
+                    <div className="text-3xl font-bold text-green-700 mb-2">{verificationResult.wasteType}</div>
+                    <div className="text-sm font-medium text-green-600 uppercase tracking-wide">Waste Type</div>
+                  </div>
+                  <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 text-center shadow-md">
+                    <div className="text-3xl font-bold text-blue-700 mb-2">{verificationResult.quantity}</div>
+                    <div className="text-sm font-medium text-blue-600 uppercase tracking-wide">Quantity</div>
+                  </div>
+                  <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 text-center shadow-md">
+                    <div className="text-3xl font-bold text-purple-700 mb-2">{(verificationResult.confidence * 100).toFixed(1)}%</div>
+                    <div className="text-sm font-medium text-purple-600 uppercase tracking-wide">Confidence</div>
+                  </div>
+                </div>
+                
+                {/* Additional Info */}
+                {verificationResult.hazards && verificationResult.hazards !== 'None' && (
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                    <h4 className="font-semibold text-red-800 mb-2">Hazards Detected:</h4>
+                    <p className="text-red-700">{verificationResult.hazards}</p>
+                  </div>
+                )}
+                
+                {/* Breakdown */}
+                {verificationResult.breakdown && Object.keys(verificationResult.breakdown).length > 0 && (
+                  <div className="bg-white/50 rounded-xl p-4">
+                    <h4 className="font-semibold text-gray-800 mb-3 text-center">Breakdown by Category</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {Object.entries(verificationResult.breakdown).map(([type, amount]) => 
+                        amount && amount !== 'null' && (
+                          <div key={type} className="bg-white rounded-lg px-3 py-2 text-center shadow-sm">
+                            <div className="text-xs font-medium text-gray-500 uppercase">{type}</div>
+                            <div className="text-sm font-bold text-gray-800">{amount}</div>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Location Section */}
+            <div className="mb-10">
+              <label className="block text-xl font-semibold text-gray-800 mb-6 text-center">
+                Select Collection Location
+              </label>
+              <div className="bg-white rounded-3xl p-4 shadow-lg border-2 border-gray-100">
+                <div className="relative rounded-2xl h-[400px] overflow-hidden">
+                  <LocationPicker 
+                    onLocationSelect={handleLocationSelect} 
+                    initialLocation={location || undefined}
+                  />
+                </div>
+                {location && (
+                  <div className="mt-4 text-center">
+                    <div className="inline-block bg-green-100 text-green-800 px-4 py-2 rounded-full text-sm font-medium">
+                      Location: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Submit Button */}
+            <div className="flex justify-center">
+              <Button 
+                type="submit" 
+                className="bg-green-600 hover:bg-green-700 text-white px-12 py-4 text-xl font-bold rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 min-w-80"
+                disabled={isSubmitting || verificationStatus !== 'success'}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader className="animate-spin -ml-1 mr-3 h-6 w-6" />
+                    Submitting Report...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="mr-3 h-6 w-6" />
+                    Submit Report & Earn Rewards
+                  </>
+                )}
+              </Button>
+            </div>
+            
+            {/* Status Indicators */}
+            {isSubmitting && (
+              <div className="mt-8 p-6 bg-blue-50 border-2 border-blue-200 rounded-2xl shadow-lg">
+                <div className="flex items-center justify-center mb-3">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full mr-3 animate-pulse"></div>
+                  <span className="text-lg text-blue-800 font-semibold">
+                    Processing Your Report...
+                  </span>
+                </div>
+                <div className="text-center text-sm text-blue-600">
+                  Your report is being processed in real-time and will be immediately visible to collection teams
+                </div>
+              </div>
+            )}
+            
+            {verificationStatus === 'success' && !isSubmitting && (
+              <div className="mt-8 p-6 bg-green-50 border-2 border-green-200 rounded-2xl shadow-lg">
+                <div className="flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-green-500 mr-3" />
+                  <span className="text-lg text-green-800 font-semibold">
+                    Ready to Submit - Real-time Processing Enabled
+                  </span>
+                </div>
+              </div>
+            )}
+          </form>
         </div>
-        
-        <Button 
-          type="submit" 
-          className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200"
-          disabled={isSubmitting || verificationStatus !== 'success'}
-        >
-          {isSubmitting ? (
-            <>
-              <Loader className="animate-spin -ml-1 mr-3 h-5 w-5" />
-              Submitting report in real-time...
-            </>
-          ) : (
-            <>
-              <CheckCircle className="mr-2 h-5 w-5" />
-              Submit Report & Earn Points
-            </>
-          )}
-        </Button>
-        
-        {/* Real-time Status Indicator */}
-        {isSubmitting && (
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center">
-              <div className="w-2 h-2 bg-blue-500 rounded-full mr-2 animate-pulse"></div>
-              <span className="text-sm text-blue-800 font-medium">
-                Processing your report in real-time...
-              </span>
-            </div>
-            <div className="mt-2 text-xs text-blue-600">
-              Your report will be immediately visible to collection teams
-            </div>
-          </div>
-        )}
-        
-        {/* Success Status */}
-        {verificationStatus === 'success' && !isSubmitting && (
-          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <div className="flex items-center">
-              <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
-              <span className="text-sm text-green-800 font-medium">
-                Ready to submit - Real-time processing enabled
-              </span>
-            </div>
-          </div>
-        )}
-      </form>
+      </div>
     </div>
   );
 }

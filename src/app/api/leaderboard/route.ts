@@ -7,45 +7,108 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
-    // Get user stats without ordering first
-    const userStats = await db
-      .select({
-        userId: Users.id,
-        userName: Users.name,
-        userEmail: Users.email,
-        balance: Users.balance,
-        reportsCount: sql<number>`COALESCE(COUNT(DISTINCT ${Reports.id}), 0)`,
-        collectedCount: sql<number>`COALESCE(COUNT(DISTINCT ${CollectedWastes.id}), 0)`,
-        totalEarnings: sql<number>`COALESCE(SUM(DISTINCT ${Transactions.amount}), 0)`
+    console.log('🏆 Starting leaderboard data fetch...')
+    
+    // Test database connection first
+    try {
+      const connectionTest = await db.select().from(Users).limit(1)
+      console.log('Database connection successful')
+    } catch (dbError) {
+      console.error('Database connection failed:', dbError)
+      return NextResponse.json({ 
+        error: 'Database connection failed',
+        leaderboard: [],
+        totalUsers: 0
+      }, { status: 500 })
+    }
+    
+    // Get all users first
+    const allUsers = await db.select().from(Users)
+    console.log(`Found ${allUsers.length} users in database`)
+    
+    // Debug: Log first user's data to see what we're getting
+    if (allUsers.length > 0) {
+      console.log('Debug - First user raw data:', JSON.stringify(allUsers[0], null, 2))
+    }
+
+    if (allUsers.length === 0) {
+      console.log('No users found - returning empty leaderboard')
+      return NextResponse.json({
+        leaderboard: [],
+        totalUsers: 0,
+        lastUpdated: new Date().toISOString(),
+        message: 'No users found in database'
       })
-      .from(Users)
-      .leftJoin(Reports, eq(Users.id, Reports.userId))
-      .leftJoin(CollectedWastes, eq(Users.id, CollectedWastes.collectorId))
-      .leftJoin(Transactions, eq(Users.id, Transactions.userId))
-      .groupBy(Users.id, Users.name, Users.email, Users.balance)
+    }
 
-    // Calculate rankings and scores, then sort properly
-    const leaderboardWithScores = userStats.map((user) => {
-      const totalScore = (user.balance || 0) + 
-                        (user.reportsCount * 10) + 
-                        (user.collectedCount * 15)
+    // Process each user individually to avoid complex JOIN issues
+    console.log('Processing user statistics...')
+    const leaderboardData = await Promise.all(
+      allUsers.map(async (user, index) => {
+        console.log(`Processing user ${index + 1}/${allUsers.length}: ${user.name}`)
+        console.log(`User ${user.name} raw balance from DB: ${user.balance} (type: ${typeof user.balance})`)
+        
+        try {
+          // Get reports count for this user
+          const reportsResult = await db
+            .select({ count: count() })
+            .from(Reports)
+            .where(eq(Reports.userId, user.id))
+          
+          // Get collections count for this user
+          const collectionsResult = await db
+            .select({ count: count() })
+            .from(CollectedWastes)
+            .where(eq(CollectedWastes.collectorId, user.id))
+          
+          // Get total earnings for this user (optional - for display)
+          const earningsResult = await db
+            .select({ total: sum(Transactions.amount) })
+            .from(Transactions)
+            .where(eq(Transactions.userId, user.id))
 
-      return {
-        id: user.userId,
-        userName: user.userName || 'Anonymous',
-        email: user.userEmail,
-        balance: user.balance || 0,
-        reportsSubmitted: user.reportsCount,
-        tasksCompleted: user.collectedCount,
-        totalEarnings: user.totalEarnings || 0,
-        score: totalScore,
-        // Add badges based on performance
-        badges: getBadges(user.reportsCount, user.collectedCount, user.balance || 0)
-      }
-    })
+          const reportsCount = reportsResult[0]?.count || 0
+          const collectionsCount = collectionsResult[0]?.count || 0
+          const totalEarnings = earningsResult[0]?.total || 0
+          const userBalance = user.balance || 0
 
+          // Calculate total score
+          const totalScore = userBalance + (reportsCount * 10) + (collectionsCount * 15)
+
+          console.log(`  ${user.name}: Balance=${userBalance} (raw: ${user.balance}), Reports=${reportsCount}, Collections=${collectionsCount}, Score=${totalScore}`)
+
+          return {
+            id: user.id,
+            userName: user.name || 'Anonymous',
+            email: user.email,
+            balance: userBalance,
+            reportsSubmitted: reportsCount,
+            tasksCompleted: collectionsCount,
+            totalEarnings,
+            score: totalScore,
+            badges: getBadges(reportsCount, collectionsCount, userBalance)
+          }
+        } catch (userError) {
+          console.error(`Error processing user ${user.name}:`, userError)
+          // Return user with zero stats if there's an error
+          return {
+            id: user.id,
+            userName: user.name || 'Anonymous',
+            email: user.email,
+            balance: user.balance || 0,
+            reportsSubmitted: 0,
+            tasksCompleted: 0,
+            totalEarnings: 0,
+            score: user.balance || 0,
+            badges: getBadges(0, 0, user.balance || 0)
+          }
+        }
+      })
+    )
+
+    console.log('Sorting leaderboard...')
     // Sort by score in descending order (highest score first)
-    const sortedLeaderboard = leaderboardWithScores.sort((a, b) => {
+    const sortedLeaderboard = leaderboardData.sort((a, b) => {
       if (b.score !== a.score) {
         return b.score - a.score // Primary: Sort by total score
       }
@@ -64,6 +127,9 @@ export async function GET(request: NextRequest) {
       rank: index + 1
     }))
 
+    console.log('Final leaderboard rankings:')
+    leaderboard.slice(0, 5).forEach(u => console.log(`  ${u.rank}. ${u.userName} (Score: ${u.score})`))
+
     const response = NextResponse.json({
       leaderboard,
       totalUsers: leaderboard.length,
@@ -75,11 +141,15 @@ export async function GET(request: NextRequest) {
     response.headers.set('Pragma', 'no-cache')
     response.headers.set('Expires', '0')
 
+    console.log(`Leaderboard API completed successfully with ${leaderboard.length} users`)
     return response
-  } catch (error) {
-    console.error('Error fetching leaderboard:', error)
+  } catch (err) {
+    console.error('Critical error in leaderboard API:', err)
+    const error = err instanceof Error ? err : new Error(String(err))
+    console.error('Error stack:', error.stack)
     return NextResponse.json({ 
       error: 'Failed to fetch leaderboard',
+      details: error.message,
       leaderboard: [],
       totalUsers: 0
     }, { status: 500 })

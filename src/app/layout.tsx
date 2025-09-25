@@ -8,8 +8,13 @@ import Sidebar from "@/components/Sidebar"
 import 'leaflet/dist/leaflet.css'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from "@/components/providers/AuthProvider"
+import { NavigationLoader } from "@/components/NavigationLoader"
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap',
+  preload: true,
+})
 
 export default function RootLayout({
   children,
@@ -20,9 +25,14 @@ export default function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+        <link rel="preconnect" href="//fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
       <body className={inter.className}>
         <AuthProvider>
-          <div className="min-h-screen bg-gray-50 flex flex-col">
+          <NavigationLoader />
+          <div className="min-h-screen bg-white flex flex-col">
             <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
             <div className="flex flex-1">
               <Sidebar open={sidebarOpen} />
@@ -31,7 +41,16 @@ export default function RootLayout({
               </main>
             </div>
           </div>
-          <Toaster />
+          <Toaster 
+            position="top-right"
+            toastOptions={{
+              duration: 3000,
+              style: {
+                background: '#363636',
+                color: '#fff',
+              },
+            }}
+          />
         </AuthProvider>
       </body>
     </html>

@@ -6,6 +6,14 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  experimental: {
+    optimizePackageImports: ['react-icons', 'lucide-react'],
+  },
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+  poweredByHeader: false,
+  compress: true,
   env: {
     DATABASE_URL: process.env.DATABASE_URL,
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,

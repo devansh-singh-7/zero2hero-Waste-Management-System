@@ -13,11 +13,14 @@ import {
   ArrowLeft,
   Trash2,
   Edit,
-  TrendingUp
+  TrendingUp,
+  Trophy
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { AlertDialog } from '@/components/ui/alert-dialog'
+import { useAlert } from '@/hooks/useAlert'
 import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 import AdminProtected from '@/components/AdminProtected'
@@ -48,6 +51,7 @@ export default function UserManagement() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
   const router = useRouter()
+  const { alertState, showConfirm, showSuccess, showError, closeAlert } = useAlert()
 
   useEffect(() => {
     const fetchData = async () => {
@@ -118,9 +122,15 @@ export default function UserManagement() {
   }
 
   const handleDeleteUser = async (userId: number, userName: string) => {
-    if (!confirm(`Are you sure you want to delete user "${userName}"? This action cannot be undone.`)) {
-      return
-    }
+    const confirmed = await showConfirm({
+      title: 'Delete User',
+      message: `Are you sure you want to delete user "${userName}"? This action cannot be undone and will permanently remove all their data.`,
+      type: 'error',
+      confirmText: 'Delete User',
+      cancelText: 'Cancel'
+    });
+
+    if (!confirmed) return;
 
     try {
       const response = await fetch(`/api/admin/users?id=${userId}`, {
@@ -131,13 +141,13 @@ export default function UserManagement() {
       if (response.ok) {
         setUsers(prev => prev.filter(user => user.id !== userId))
         setFilteredUsers(prev => prev.filter(user => user.id !== userId))
-        toast.success(`User "${userName}" deleted successfully`)
+        showSuccess('User Deleted', `User "${userName}" has been deleted successfully.`)
       } else {
         throw new Error('Failed to delete user')
       }
     } catch (error) {
       console.error('Error deleting user:', error)
-      toast.error('Failed to delete user')
+      showError('Deletion Failed', 'Failed to delete user. Please try again.')
     }
   }
 
@@ -353,8 +363,11 @@ export default function UserManagement() {
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+                <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                  <div className="text-center">
+                    <Trophy className="h-8 w-8 text-blue-500 mx-auto animate-spin" />
+                    <p className="mt-4 text-gray-600">Loading users...</p>
+                  </div>
                 </div>
               ) : filteredUsers.length === 0 ? (
                 <div className="text-center py-8">
@@ -554,6 +567,19 @@ export default function UserManagement() {
             </div>
           </div>
         )}
+
+        {/* Alert Dialog */}
+        <AlertDialog
+          isOpen={alertState.isOpen}
+          onClose={closeAlert}
+          onConfirm={alertState.onConfirm}
+          title={alertState.title}
+          message={alertState.message}
+          type={alertState.type}
+          confirmText={alertState.confirmText}
+          cancelText={alertState.cancelText}
+          showCancel={alertState.showCancel}
+        />
       </div>
     </AdminProtected>
   )

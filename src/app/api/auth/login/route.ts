@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
     const user = result[0];
     if (!user) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      return NextResponse.json({ error: 'User not registered' }, { status: 404 });
     }
 
     // Verify password

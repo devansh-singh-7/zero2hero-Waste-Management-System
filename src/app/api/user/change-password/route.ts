@@ -3,7 +3,7 @@ import { getUserFromSession } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { Users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import bcrypt from 'bcryptjs';
+import { verifyPassword, hashPassword } from '@/lib/customAuth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,13 +33,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify current password
-    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, userData[0].password);
+    const isCurrentPasswordValid = await verifyPassword(currentPassword, userData[0].password);
     if (!isCurrentPasswordValid) {
       return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });
     }
 
     // Hash new password
-    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    const hashedNewPassword = await hashPassword(newPassword);
 
     // Update password
     await db.update(Users)

@@ -23,10 +23,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
     }
 
-    // Get the basic Gemini model
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash"
-    });
+    console.log('Attempting to verify waste with Gemini AI...');
+    
+    // Try to get the model - use the most stable version
+    let model;
+    try {
+      model = genAI.getGenerativeModel({ 
+        model: "gemini-1.5-flash"
+      });
+    } catch (modelError) {
+      console.error('Error creating model:', modelError);
+      // Fallback to simpler analysis
+      return NextResponse.json({
+        wasteType: "General waste (verification unavailable)",
+        quantity: "Unknown amount", 
+        confidence: 0.5,
+        hazards: "Please verify manually",
+        breakdown: {
+          plastic: null,
+          paper: null,
+          glass: null, 
+          metal: null,
+          organic: null,
+          electronic: null,
+          textile: null,
+          other: "Unknown amount"
+        }
+      }, { status: 200 });
+    }
 
     // Create enhanced prompt for detailed waste analysis
     const prompt = `You are an expert waste management AI analyst. Analyze this image carefully and identify ALL types of waste visible. 
@@ -71,7 +95,31 @@ Instructions:
     };
 
     // Generate content with both prompt and image
-    const result = await model.generateContent([prompt, imagePart]);
+    let result;
+    try {
+      console.log('Calling Gemini AI for image analysis...');
+      result = await model.generateContent([prompt, imagePart]);
+      console.log('Gemini AI response received');
+    } catch (aiError) {
+      console.error('Gemini AI API Error:', aiError);
+      // Return fallback analysis
+      return NextResponse.json({
+        wasteType: "Mixed waste (AI verification failed)",
+        quantity: "Manual verification required",
+        confidence: 0.3,
+        hazards: "Please verify manually",
+        breakdown: {
+          plastic: null,
+          paper: null, 
+          glass: null,
+          metal: null,
+          organic: null,
+          electronic: null,
+          textile: null,
+          other: "Unknown amount"
+        }
+      }, { status: 200 });
+    }
     
     if (!result.response) {
       return NextResponse.json({ error: 'No response from AI model' }, { status: 500 });

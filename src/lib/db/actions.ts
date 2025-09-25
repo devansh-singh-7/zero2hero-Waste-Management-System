@@ -9,10 +9,19 @@ import {
 } from '@/lib/db/schema';
 import { eq, sql, and, desc, ne } from 'drizzle-orm';
 
-const getDb = async () => {
+export const getDb = async () => {
   if (!db) {
     throw new Error('Database not initialized');
   }
+  
+  // Test database connection
+  try {
+    await db.select().from(Users).limit(1);
+  } catch (error) {
+    console.error('Database connection test failed:', error);
+    throw new Error('Database connection failed');
+  }
+  
   return db;
 };
 
@@ -378,19 +387,45 @@ interface TaskUpdateData {
 
 export const updateTaskStatus = async (reportId: number, newStatus: string, collectorId?: number) => {
   try {
+    console.log(`Attempting to update task ${reportId} to status: ${newStatus}`);
+    
     const database = await getDb();
+    
+    // If collectorId is provided, verify the user exists
+    if (collectorId !== undefined) {
+      const [user] = await database
+        .select()
+        .from(Users)
+        .where(eq(Users.id, collectorId))
+        .limit(1);
+      
+      if (!user) {
+        console.error(`Collector ID ${collectorId} not found in users table`);
+        throw new Error(`Invalid collector ID: ${collectorId}. User does not exist.`);
+      }
+      
+      console.log(`Verified collector exists: ID ${collectorId}, Email: ${user.email}`);
+    }
+    
     const updateData: TaskUpdateData = { status: newStatus };
     if (collectorId !== undefined) {
       updateData.collectorId = collectorId;
     }
+    
     const [updatedReport] = await database
       .update(Reports)
       .set(updateData)
       .where(eq(Reports.id, reportId))
       .returning();
+    
+    if (!updatedReport) {
+      throw new Error(`No report found with ID ${reportId}`);
+    }
+    
+    console.log(`Successfully updated task ${reportId} to status: ${newStatus}`);
     return updatedReport;
   } catch (error) {
-    console.error("Error updating task status:", error);
+    console.error(`Error updating task status for report ${reportId}:`, error);
     throw error;
   }
 };

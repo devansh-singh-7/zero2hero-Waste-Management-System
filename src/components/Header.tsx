@@ -38,6 +38,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [userName, setUserName] = useState<string>('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isSearchFocused, setIsSearchFocused] = useState(false)
   const isMobile = useMediaQuery("(max-width: 768px)")
   
   // Check if we're on auth pages
@@ -211,6 +213,25 @@ export default function Header({ onMenuClick }: HeaderProps) {
     }
   };
 
+  // Search functionality
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      // Navigate to search results or perform search action
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch(e as any);
+    }
+  };
+
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="flex items-center justify-between px-4 py-2">
@@ -228,20 +249,40 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
         {!isMobile && (
           <div className="flex-1 max-w-xl mx-4">
-            <div className="relative">
+            <form onSubmit={handleSearch} className="relative">
               <input
                 type="text"
-                placeholder="Search..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-green-500"
+                value={searchQuery}
+                onChange={handleSearchChange}
+                onKeyPress={handleSearchKeyPress}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                placeholder="Search for rewards, tasks, or locations..."
+                className={cn(
+                  "w-full px-4 py-2 border rounded-full focus:outline-none transition-all duration-200",
+                  isSearchFocused 
+                    ? "border-green-500 ring-2 ring-green-200 bg-white" 
+                    : "border-gray-300 bg-gray-50 hover:bg-white"
+                )}
               />
-              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            </div>
+              <button
+                type="submit"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-green-600 transition-colors duration-200"
+              >
+                <Search className="h-4 w-4" />
+              </button>
+            </form>
           </div>
         )}
 
         <div className="flex items-center gap-2">
           {isMobile && (
-            <Button variant="ghost" size="icon">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => router.push('/search')}
+              className="hover:bg-green-50"
+            >
               <Search className="h-5 w-5" />
             </Button>
           )}

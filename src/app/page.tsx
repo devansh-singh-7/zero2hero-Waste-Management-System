@@ -1,6 +1,7 @@
 // @ts-nocheck
 'use client'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { ArrowRight, Leaf, Recycle, Users, Coins, MapPin, ChevronRight, Target, Globe, Award, Shield, Zap, Heart, Camera, Truck, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Poppins } from 'next/font/google'
@@ -13,47 +14,97 @@ const poppins = Poppins({
 })
 
 function AnimatedGlobe() {
+  const [clicked, setClicked] = useState(false)
+  const [sparkles, setSparkles] = useState([])
+
+  const handleClick = () => {
+    setClicked(true)
+    
+    // Create sparkle effects
+    const newSparkles = Array.from({ length: 8 }, (_, i) => ({
+      id: Date.now() + i,
+      style: {
+        left: `${20 + Math.random() * 60}%`,
+        top: `${20 + Math.random() * 60}%`,
+        animationDelay: `${Math.random() * 0.5}s`
+      }
+    }))
+    setSparkles(newSparkles)
+    
+    setTimeout(() => {
+      setClicked(false)
+      setSparkles([])
+    }, 3000)
+  }
+
   return (
-    <div className="relative w-32 h-32 mx-auto mb-8">
-      <div className="absolute inset-0 rounded-full bg-green-500 opacity-20 animate-pulse"></div>
-      <div className="absolute inset-2 rounded-full bg-green-400 opacity-40 animate-ping"></div>
-      <div className="absolute inset-4 rounded-full bg-green-300 opacity-60 animate-spin"></div>
-      <div className="absolute inset-6 rounded-full bg-green-200 opacity-80 animate-bounce"></div>
-      <Leaf className="absolute inset-0 m-auto h-16 w-16 text-green-600 animate-pulse" />
+    <div 
+      className={`relative w-32 h-32 mx-auto mb-8 cursor-pointer transition-all duration-500 ${
+        clicked ? 'animate-bounce scale-110' : 'hover:scale-105'
+      }`}
+      onClick={handleClick}
+    >
+      <div className={`absolute inset-0 rounded-full bg-green-500 opacity-20 animate-pulse ${clicked ? 'animate-rainbow-pulse' : ''}`}></div>
+      <div className={`absolute inset-2 rounded-full bg-green-400 opacity-40 animate-ping ${clicked ? 'animate-wiggle' : ''}`}></div>
+      <div className={`absolute inset-4 rounded-full bg-green-300 opacity-60 animate-spin ${clicked ? 'animate-bounce' : ''}`}></div>
+      <div className={`absolute inset-6 rounded-full bg-green-200 opacity-80 animate-bounce ${clicked ? 'animate-pulse' : ''}`}></div>
+      <Leaf className={`absolute inset-0 m-auto h-16 w-16 text-green-600 animate-pulse transition-all duration-500 ${
+        clicked ? 'text-yellow-400 scale-125 rotate-180 animate-wiggle' : ''
+      }`} />
+      
+      {/* Sparkle effects */}
+      {sparkles.map((sparkle) => (
+        <div
+          key={sparkle.id}
+          className="absolute w-2 h-2 bg-yellow-400 rounded-full animate-sparkle"
+          style={sparkle.style}
+        ></div>
+      ))}
+      
+      {clicked && (
+        <>
+          <div className="absolute inset-0 rounded-full bg-yellow-400 opacity-30 animate-ping"></div>
+          <div className="absolute inset-0 rounded-full bg-blue-400 opacity-20 animate-pulse"></div>
+          <div className="absolute -inset-4 rounded-full bg-pink-400 opacity-10 animate-ping"></div>
+        </>
+      )}
     </div>
   )
 }
 
 export default function Home() {
+  const router = useRouter();
   const [loggedIn, setLoggedIn] = useState(false);
   const [impactData, setImpactData] = useState({
     wasteCollected: 0,
     reportsSubmitted: 0,
     tokensEarned: 0,
-    co2Offset: 0
+    co2Offset: 0,
+    totalUsers: 0
   });
+
+  // Helper function to safely calculate progress percentage
+  const calculateProgress = (current: number, target: number): number => {
+    if (!current || !target || isNaN(current) || isNaN(target) || target === 0) {
+      return 0;
+    }
+    return Math.min((current / target) * 100, 100);
+  };
 
   // Check authentication status on mount
   useEffect(() => {
-    async function checkAuth() {
+    const checkAuth = async () => {
       try {
-        const response = await fetch('/api/auth/check', {
-          credentials: 'include',
-          headers: {
-            'Cache-Control': 'no-cache', // Ensure fresh data
-          }
-        });
-        if (response.ok) {
-          setLoggedIn(true);
-        } else {
-          setLoggedIn(false);
+        const response = await fetch('/api/auth/check')
+        if (!response.ok) {
+          router.push('/auth/signin');
         }
       } catch (error) {
-        console.error('Error checking auth status:', error);
-        setLoggedIn(false);
+        console.error('Auth check failed:', error)
       }
     }
-    checkAuth();
+    
+    checkAuth()
 
     // Listen for storage events to refresh when login happens
     const handleStorageChange = (e: StorageEvent) => {
@@ -67,7 +118,7 @@ export default function Home() {
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     async function fetchImpactData() {
@@ -87,19 +138,20 @@ export default function Home() {
           const stats = await statsResponse.json();
           console.log('Received platform stats:', stats);
           
-          setImpactData({
-            wasteCollected: stats.totalWasteCollected || 0,
-            reportsSubmitted: stats.totalReports || 0,
-            tokensEarned: stats.totalTasks || 0, // Using total tasks completed
-            co2Offset: stats.totalCO2Saved || 0
-          });
+          // Ensure all values are numbers and not NaN
+          const safeStats = {
+            wasteCollected: Number(stats.totalWasteCollected) || 0,
+            reportsSubmitted: Number(stats.totalReports) || 0,
+            tokensEarned: Number(stats.totalTasks) || 0,
+            co2Offset: Number(stats.totalCO2Saved) || 0,
+            totalUsers: Number(stats.totalUsers) || 0
+          };
+          
+          console.log('Safe stats processed:', safeStats);
+          
+          setImpactData(safeStats);
 
-          console.log('Updated platform impact data:', {
-            wasteCollected: stats.totalWasteCollected || 0,
-            reportsSubmitted: stats.totalReports || 0,
-            tasksCompleted: stats.totalTasks || 0,
-            co2Offset: stats.totalCO2Saved || 0
-          });
+          console.log('Updated platform impact data:', safeStats);
         } else {
           const errorText = await statsResponse.text();
           console.error('Failed to fetch platform stats:', errorText);
@@ -112,12 +164,21 @@ export default function Home() {
           wasteCollected: 0,
           reportsSubmitted: 0,
           tokensEarned: 0,
-          co2Offset: 0
+          co2Offset: 0,
+          totalUsers: 0
         });
       }
     }
 
+    // Fetch data immediately
     fetchImpactData();
+    
+    // Set up periodic refresh every 5 minutes to keep data current
+    const intervalId = setInterval(fetchImpactData, 5 * 60 * 1000);
+    
+    return () => {
+      clearInterval(intervalId);
+    };
   }, []); // Remove dependency on loggedIn since we want to show data regardless
 
   const login = () => {
@@ -129,20 +190,20 @@ export default function Home() {
     <div className={`container mx-auto px-4 py-16 ${poppins.className}`}>
       <section className="text-center mb-20">
         <AnimatedGlobe />
-        <h1 className="text-6xl font-bold mb-6 text-gray-800 tracking-tight">
+        <h1 className="text-4xl font-bold mb-6 text-gray-900">
           Zero-to-Hero <span className="text-green-600">Waste Management</span>
         </h1>
-        <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed mb-8">
+        <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
           Join our community in making waste management more efficient and rewarding!
         </p>
         {!loggedIn ? (
-          <Button onClick={login} className="bg-green-600 hover:bg-green-700 text-white text-lg py-6 px-10 rounded-full font-medium transition-all duration-300 ease-in-out transform hover:scale-105">
+          <Button onClick={login} className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-medium transition-colors duration-200">
             Get Started
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         ) : (
           <Link href="/rewards/report">
-            <Button className="bg-green-600 hover:bg-green-700 text-white text-lg py-6 px-10 rounded-full font-medium transition-all duration-300 ease-in-out transform hover:scale-105">
+            <Button className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-medium transition-colors duration-200">
               Report Waste
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
@@ -150,8 +211,8 @@ export default function Home() {
         )}
       </section>
       
-      <section className="bg-white p-10 rounded-3xl shadow-lg mb-20">
-        <h2 className="text-4xl font-bold mb-12 text-center text-gray-800">Our Impact</h2>
+      <section className="bg-gray-50 p-8 rounded-lg mb-20">
+        <h2 className="text-3xl font-bold mb-8 text-center text-green-600">Our Impact</h2>
         <div className="grid md:grid-cols-4 gap-6">
           <ImpactCard title="Waste Collected" value={`${impactData.wasteCollected} kg`} icon={Recycle} />
           <ImpactCard title="Reports Submitted" value={impactData.reportsSubmitted.toString()} icon={MapPin} />
@@ -179,10 +240,10 @@ export default function Home() {
       </section>
 
       {/* Mission & Vision Section */}
-      <section className="bg-gradient-to-br from-green-50 to-blue-50 p-12 rounded-3xl mb-20">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-gray-800 mb-4">Our Mission & Vision</h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+      <section className="bg-gray-50 p-8 rounded-lg mb-20">
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">Our Mission & Vision</h2>
+          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
             Transforming waste management through community action and technology innovation
           </p>
         </div>
@@ -250,10 +311,10 @@ export default function Home() {
       </section>
 
       {/* Goals & Impact Section */}
-      <section className="bg-gray-900 text-white p-12 rounded-3xl mb-20">
+      <section className="bg-green-600 text-white p-12 rounded-3xl mb-20">
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold mb-4">Our Environmental Goals</h2>
-          <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+          <p className="text-xl text-green-100 max-w-3xl mx-auto">
             Ambitious targets to create measurable environmental change through collective action
           </p>
         </div>
@@ -264,21 +325,30 @@ export default function Home() {
             title="1 Million KG"
             subtitle="Waste Collected"
             description="Our goal to collect and properly manage 1 million kilograms of waste through community action."
-            progress={Math.min((impactData.wasteCollected / 1000000) * 100, 100)}
+            progress={calculateProgress(impactData.wasteCollected, 1000000)}
+            currentValue={impactData.wasteCollected}
+            targetValue={1000000}
+            unit="kg"
           />
           <GoalCard
             icon={Leaf}
             title="500 Tons CO2"
             subtitle="Carbon Offset"
             description="Targeting 500 tons of CO2 equivalent offset through proper waste management practices."
-            progress={Math.min((impactData.co2Offset / 500000) * 100, 100)}
+            progress={calculateProgress(impactData.co2Offset, 500000)}
+            currentValue={impactData.co2Offset}
+            targetValue={500000}
+            unit="kg"
           />
           <GoalCard
             icon={Users}
             title="100,000 Users"
             subtitle="Community Members"
-            description="Building a community of 100,000 active environmental stewards worldwide."
-            progress={15} // Placeholder progress
+            description="Building a thriving global community of 100,000 active environmental stewards worldwide, united for change."
+            progress={calculateProgress(impactData.totalUsers, 100000)}
+            currentValue={impactData.totalUsers}
+            targetValue={100000}
+            unit="users"
           />
         </div>
       </section>
@@ -327,9 +397,9 @@ export default function Home() {
       </section>
 
       {/* Call to Action Section */}
-      <section className="bg-gradient-to-r from-green-600 to-blue-600 text-white p-12 rounded-3xl text-center">
-        <h2 className="text-4xl font-bold mb-6">Ready to Make a Difference?</h2>
-        <p className="text-xl mb-8 max-w-2xl mx-auto opacity-90">
+      <section className="bg-green-600 text-white p-8 rounded-lg text-center">
+        <h2 className="text-3xl font-bold mb-4">Ready to Make a Difference?</h2>
+        <p className="text-lg mb-6 max-w-2xl mx-auto">
           Join thousands of environmental heroes who are already making their communities cleaner and greener. 
           Every action counts, every report matters, and every contribution creates lasting change.
         </p>
@@ -338,14 +408,14 @@ export default function Home() {
             <>
               <Button 
                 onClick={login} 
-                className="bg-white text-green-600 hover:bg-gray-100 text-lg py-6 px-10 rounded-full font-medium transition-all duration-300 ease-in-out transform hover:scale-105"
+                className="bg-white text-green-600 hover:bg-gray-100 px-6 py-3 rounded-lg font-medium transition-colors duration-200"
               >
                 Join the Movement
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               <Button 
                 variant="outline" 
-                className="border-white text-white hover:bg-white hover:text-green-600 text-lg py-6 px-10 rounded-full font-medium transition-all duration-300 ease-in-out"
+                className="border-white text-green-600 hover:bg-white hover:text-green-600 px-6 py-3 rounded-lg font-medium transition-colors duration-200"
               >
                 Learn More
               </Button>
@@ -406,28 +476,66 @@ function ProcessStep({ step, icon: Icon, title, description }: { step: string; i
   )
 }
 
-function GoalCard({ icon: Icon, title, subtitle, description, progress }: { 
+function GoalCard({ 
+  icon: Icon, 
+  title, 
+  subtitle, 
+  description, 
+  progress, 
+  currentValue, 
+  targetValue, 
+  unit 
+}: { 
   icon: React.ElementType; 
   title: string; 
   subtitle: string; 
   description: string; 
-  progress: number 
+  progress: number;
+  currentValue?: number;
+  targetValue?: number;
+  unit?: string;
 }) {
+  const formatValue = (value: number, unit: string) => {
+    // Handle NaN or invalid values
+    if (!value || isNaN(value) || !isFinite(value)) {
+      return `0 ${unit}`;
+    }
+    
+    if (unit === 'kg' && value >= 1000) {
+      return `${(value / 1000).toFixed(1)}t`
+    }
+    if (unit === 'users' && value >= 1000) {
+      return `${(value / 1000).toFixed(1)}k users`
+    }
+    return `${value.toLocaleString()} ${unit}`
+  }
+
+  // Ensure progress is a valid number
+  const safeProgress = isNaN(progress) || !isFinite(progress) ? 0 : Math.max(0, Math.min(progress, 100))
+
   return (
     <div className="text-center">
-      <div className="bg-white bg-opacity-10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+      <div className="bg-white bg-opacity-20 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
         <Icon className="h-10 w-10 text-white" />
       </div>
-      <h3 className="text-3xl font-bold mb-2">{title}</h3>
-      <p className="text-xl text-gray-300 mb-4">{subtitle}</p>
-      <p className="text-gray-400 mb-6 leading-relaxed">{description}</p>
-      <div className="bg-gray-800 rounded-full h-2 mb-2">
+      <h3 className="text-3xl font-bold mb-2 text-white">{title}</h3>
+      <p className="text-xl text-green-100 mb-4">{subtitle}</p>
+      <p className="text-green-50 mb-4 leading-relaxed">{description}</p>
+      
+      {/* Progress Information */}
+      <div className="mb-4">
+        <p className="text-sm text-green-100 mb-2">
+          {formatValue(currentValue || 0, unit || '')} of {formatValue(targetValue || 0, unit || '')}
+        </p>
+      </div>
+      
+      <div className="bg-green-800 rounded-full h-2 mb-2">
         <div 
-          className="bg-green-500 h-2 rounded-full transition-all duration-500"
-          style={{ width: `${Math.min(progress, 100)}%` }}
+          className="bg-yellow-400 h-2 rounded-full transition-all duration-500"
+          style={{ width: `${safeProgress}%` }}
         ></div>
       </div>
-      <p className="text-sm text-gray-400">{Math.round(progress)}% Complete</p>
+      <p className="text-sm text-green-100">{Math.round(safeProgress)}% Complete</p>
     </div>
   )
 }

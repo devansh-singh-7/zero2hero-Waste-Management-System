@@ -13,7 +13,8 @@ import {
   TrendingUp,
   Award,
   Calendar,
-  Activity
+  Activity,
+  Trophy
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -157,8 +158,11 @@ export default function AdminAnalytics() {
 
         <div className="p-6 max-w-7xl mx-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+              <div className="text-center">
+                <Trophy className="h-8 w-8 text-blue-500 mx-auto animate-spin" />
+                <p className="mt-4 text-gray-600">Loading analytics...</p>
+              </div>
             </div>
           ) : (
             <>

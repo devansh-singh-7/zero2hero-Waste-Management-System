@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Trash2, MapPin, CheckCircle, Clock, ArrowRight, Camera, Upload, Loader, Calendar, Weight, Search, X, ArrowLeft } from 'lucide-react'
+import { Trash2, MapPin, CheckCircle, Clock, ArrowRight, Camera, Upload, Loader, Calendar, Weight, Search, X, ArrowLeft, Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'react-hot-toast'
@@ -88,21 +88,30 @@ export default function AdminCollectionsPage() {
   };
 
   const updateTask = async (taskId: number, newStatus: string) => {
-    const response = await fetch('/api/admin/collect', {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-      body: JSON.stringify({
-        taskId,
-        newStatus,
-      }),
-    });
-    if (!response.ok) {
-      throw new Error('Failed to update task');
+    try {
+      const response = await fetch('/api/admin/collect', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          taskId,
+          newStatus,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.details || errorData.error || `HTTP ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating task:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      throw new Error(`Failed to update task: ${errorMessage}`);
     }
-    return response.json();
   };
 
   const saveCollectedWasteData = async (data: any) => {
@@ -126,7 +135,10 @@ export default function AdminCollectionsPage() {
     try {
       const tasksData = await fetchTasks();
       setTasks(tasksData || []);
-      console.log('Loaded tasks:', tasksData?.length || 0);
+      // Only log in development mode to reduce console spam
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Loaded tasks:', tasksData?.length || 0);
+      }
     } catch (error) {
       console.error('Error loading tasks:', error);
       toast.error('Failed to load collection tasks');
@@ -346,8 +358,7 @@ export default function AdminCollectionsPage() {
       <AdminProtected>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
-            <Loader className="h-8 w-8 animate-spin mx-auto mb-4 text-green-600" />
-            <p className="text-gray-600">Loading collection tasks...</p>
+            <Trophy className="h-8 w-8 text-blue-500 mx-auto animate-spin" />
           </div>
         </div>
       </AdminProtected>
