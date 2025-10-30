@@ -5,7 +5,6 @@ import * as schema from "./schema";
 
 export type Database = NeonHttpDatabase<typeof schema>;
 
-// Global database instance
 let db: Database | undefined;
 let sqlClient: ReturnType<typeof neon> | undefined;
 
@@ -20,7 +19,6 @@ async function initializeDB(): Promise<Database> {
     console.log("Initializing database connection...");
     sqlClient = neon(process.env.DATABASE_URL);
     
-    // Test the connection
     await sqlClient`SELECT 1`;
     
     const initialized = drizzle(sqlClient, { schema }) as Database;
@@ -34,7 +32,6 @@ async function initializeDB(): Promise<Database> {
   }
 }
 
-// Initialize the database connection
 void initializeDB().catch(console.error);
 
 export { db, sqlClient, initializeDB };

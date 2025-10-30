@@ -129,13 +129,11 @@ export default function AdminCollectionsPage() {
     return response.json();
   };
 
-  // Load tasks function
   const loadTasks = async () => {
     setLoading(true);
     try {
       const tasksData = await fetchTasks();
       setTasks(tasksData || []);
-      // Only log in development mode to reduce console spam
       if (process.env.NODE_ENV === 'development') {
         console.log('Loaded tasks:', tasksData?.length || 0);
       }
@@ -147,12 +145,10 @@ export default function AdminCollectionsPage() {
     }
   };
 
-  // Load tasks on component mount
   useEffect(() => {
     loadTasks();
   }, []);
 
-  // Auto-refresh every 30 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       loadTasks();
@@ -161,7 +157,6 @@ export default function AdminCollectionsPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Collection Management Functions
   const handleAcceptTask = async (taskId: number) => {
     if (!adminData) {
       toast.error('Admin authentication required');
@@ -247,7 +242,6 @@ export default function AdminCollectionsPage() {
 
               const responseText = result.response.text();
               
-              // Try to parse JSON response
               try {
                 const jsonMatch = responseText.match(/\{[\s\S]*\}/);
                 if (jsonMatch) {
@@ -264,7 +258,6 @@ export default function AdminCollectionsPage() {
         }
       }
 
-      // Complete the task with comprehensive rewards system
       const response = await fetch('/api/admin/collect', {
         method: 'POST',
         headers: {
@@ -284,7 +277,6 @@ export default function AdminCollectionsPage() {
 
       const result = await response.json();
       
-      // Update the task in the local state
       setTasks(prevTasks =>
         prevTasks.map(task =>
           task.id === taskId
@@ -298,19 +290,16 @@ export default function AdminCollectionsPage() {
         )
       );
 
-      // Show success message with reward info
       toast.success(result.message || 'Task completed successfully!');
       
       if (verificationResult && !verificationResult.wasteTypeMatch) {
         toast.error('AI detected potential mismatch in waste type - please review');
       }
 
-      // Show notification about photo being sent to user
       if (imageUrl) {
         toast.success('📸 Completion photo has been sent to the user\'s notifications!');
       }
 
-      // Refresh tasks to get updated data
       await loadTasks();
 
     } catch (error) {
@@ -319,7 +308,6 @@ export default function AdminCollectionsPage() {
     }
   };
 
-  // Utility function to convert file to base64
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -329,7 +317,6 @@ export default function AdminCollectionsPage() {
     });
   };
 
-  // Filter and pagination logic
   const filteredTasks = tasks.filter(task =>
     task.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
     task.wasteType.toLowerCase().includes(searchTerm.toLowerCase()) ||

@@ -28,20 +28,17 @@ export default function TotalEarnings() {
   }
 
   useEffect(() => {
-    // Fetch immediately on mount
     fetchTotalEarnings()
 
-    // Refresh every 5 seconds to ensure latest balance (reduced from 10s for faster updates)
+   
     const interval = setInterval(fetchTotalEarnings, 5000)
 
-    // Listen for storage events to refresh when login happens
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'userEmail') {
         fetchTotalEarnings()
       }
     }
 
-    // Listen for custom events that indicate balance should be updated
     const handleBalanceUpdate = () => {
       fetchTotalEarnings()
     }

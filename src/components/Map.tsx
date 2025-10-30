@@ -26,7 +26,6 @@ export default function Map() {
 
   useEffect(() => {
     const fetchEncryptedWastePoints = async () => {
-      // Implement fetching logic from your backend or IPFS
     };
 
     fetchEncryptedWastePoints();
@@ -36,7 +35,6 @@ export default function Map() {
     const wasteData = { location, quantity };
     const encryptedData = await encryptWasteData(wasteData);
     await submitEncryptedWasteData(encryptedData);
-    // Refresh the map or add the new point
     await updateInsights();
   };
 

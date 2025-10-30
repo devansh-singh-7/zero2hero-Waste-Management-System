@@ -6,7 +6,6 @@ export async function POST(request: NextRequest) {
   try {
     const response = NextResponse.json({ message: 'Admin logout successful' })
     
-    // Clear admin session cookie
     response.cookies.set('admin_session', '', {
       httpOnly: true,
       path: '/',

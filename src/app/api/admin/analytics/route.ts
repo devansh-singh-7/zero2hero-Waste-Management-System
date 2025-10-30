@@ -7,25 +7,20 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
-    // Check admin authentication
     const adminSession = request.cookies.get('admin_session')?.value
     if (!adminSession) {
       return NextResponse.json({ error: 'Admin authentication required' }, { status: 401 })
     }
 
-    // Get total users
     const totalUsers = await db.select({ count: count() }).from(Users)
 
-    // Get total reports
     const totalReports = await db.select({ count: count() }).from(Reports)
 
-    // Get reports statistics (using Reports table as tasks)
     const allReports = await db.select().from(Reports)
     const pendingTasks = allReports.filter(report => report.status === 'pending').length
     const completedTasks = allReports.filter(report => report.status === 'completed').length
     const inProgressTasks = allReports.filter(report => report.status === 'in-progress').length
 
-    // Get token statistics (using balance from Users table, fallback to Transactions)
     let totalTokensDistributed = 0
     try {
       const userBalances = await db.select({ 
@@ -33,7 +28,6 @@ export async function GET(request: NextRequest) {
       }).from(Users)
       totalTokensDistributed = Number(userBalances[0]?.total) || 0
     } catch (error) {
-      // Fallback to calculating from Transactions table
       try {
         const transactions = await db.select({ 
           total: sum(Transactions.amount) 
@@ -45,7 +39,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get recent activity (last 7 days)
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 
@@ -57,7 +50,6 @@ export async function GET(request: NextRequest) {
       .from(Users)
       .where(gte(Users.createdAt, sevenDaysAgo))
 
-    // Get monthly statistics
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
@@ -69,7 +61,6 @@ export async function GET(request: NextRequest) {
       .from(Users)
       .where(gte(Users.createdAt, thirtyDaysAgo))
 
-    // Get top users by token balance
     const topUsers = await db.select({
       id: Users.id,
       name: Users.name,
@@ -79,7 +70,6 @@ export async function GET(request: NextRequest) {
       .orderBy(Users.balance)
       .limit(5)
 
-    // Get recent reports with user info
     const recentReportsData = await db.select({
       id: Reports.id,
       type: Reports.wasteType,
@@ -109,8 +99,8 @@ export async function GET(request: NextRequest) {
         reportsLastMonth: Number(monthlyReports[0]?.count) || 0,
         usersLastMonth: Number(monthlyUsers[0]?.count) || 0
       },
-      topUsers: topUsers.reverse(), // Reverse to show highest balance first
-      recentActivity: recentReportsData.reverse() // Show most recent first
+      topUsers: topUsers.reverse(), 
+      recentActivity: recentReportsData.reverse() 
     }
 
     return NextResponse.json(analytics)

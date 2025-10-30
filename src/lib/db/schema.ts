@@ -74,7 +74,7 @@ export const Notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// New Transactions table
+// Transactions table
 export const Transactions = pgTable("transactions", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => Users.id).notNull(),
@@ -84,7 +84,7 @@ export const Transactions = pgTable("transactions", {
   date: timestamp("date").defaultNow().notNull(),
 });
 
-// Available Rewards table
+// Rewards table
 export const available_rewards = pgTable("available_rewards", {
     id: serial("id").primaryKey(),
     name: varchar("name", { length: 255 }).notNull(),
@@ -95,7 +95,7 @@ export const available_rewards = pgTable("available_rewards", {
     updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Waste Collection Tasks table (assuming this exists)
+// Tasks table
 export const WasteCollectionTasks = pgTable("waste_collection_tasks", {
   id: serial("id").primaryKey(),
   createdBy: integer("created_by").references(() => Users.id).notNull(),

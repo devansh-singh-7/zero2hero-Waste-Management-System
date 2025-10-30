@@ -42,12 +42,50 @@ export default function RootLayout({
             </div>
           </div>
           <Toaster 
-            position="top-right"
+            position="top-center"
             toastOptions={{
               duration: 3000,
               style: {
-                background: '#363636',
-                color: '#fff',
+                background: '#ffffff',
+                color: '#374151',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                fontSize: '14px',
+                fontWeight: '500',
+              },
+              success: {
+                style: {
+                  background: '#ffffff',
+                  color: '#059669',
+                  border: '1px solid #d1fae5',
+                },
+                iconTheme: {
+                  primary: '#059669',
+                  secondary: '#ffffff',
+                },
+              },
+              error: {
+                style: {
+                  background: '#ffffff',
+                  color: '#dc2626',
+                  border: '1px solid #fecaca',
+                },
+                iconTheme: {
+                  primary: '#dc2626',
+                  secondary: '#ffffff',
+                },
+              },
+              loading: {
+                style: {
+                  background: '#ffffff',
+                  color: '#3b82f6',
+                  border: '1px solid #dbeafe',
+                },
+                iconTheme: {
+                  primary: '#3b82f6',
+                  secondary: '#ffffff',
+                },
               },
             }}
           />

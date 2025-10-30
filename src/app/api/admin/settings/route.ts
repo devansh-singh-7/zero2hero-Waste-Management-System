@@ -2,50 +2,40 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
-// This would typically be stored in a database
-// For now, we'll simulate it with in-memory storage
 let systemSettings = {
-  // Application Settings
   appName: 'EcoReward Platform',
   appVersion: '1.0.0',
   maintenanceMode: false,
   registrationEnabled: true,
   
-  // Security Settings
   sessionTimeout: 60,
   maxLoginAttempts: 5,
   passwordMinLength: 8,
   requireEmailVerification: false,
   twoFactorAuth: false,
   
-  // Notification Settings
   emailNotifications: true,
   smsNotifications: false,
   pushNotifications: true,
   adminAlerts: true,
   
-  // Reward System Settings
   baseRewardPoints: 10,
   bonusMultiplier: 1.5,
   referralBonus: 50,
   levelUpThreshold: 100,
   
-  // Data Management
   dataRetentionDays: 365,
   autoBackup: true,
   backupFrequency: 'daily',
   analyticsEnabled: true,
   
-  // API Settings
   rateLimitEnabled: true,
   maxRequestsPerMinute: 100,
   apiKeyRequired: false,
 }
 
-// GET - Fetch current system settings
 export async function GET(request: NextRequest) {
   try {
-    // Check if user is admin
     const authCheck = await fetch(new URL('/api/admin/auth/check', request.url), {
       headers: {
         cookie: request.headers.get('cookie') || '',
@@ -69,10 +59,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// PUT - Update system settings
 export async function PUT(request: NextRequest) {
   try {
-    // Check if user is admin
     const authCheck = await fetch(new URL('/api/admin/auth/check', request.url), {
       headers: {
         cookie: request.headers.get('cookie') || '',
@@ -85,7 +73,6 @@ export async function PUT(request: NextRequest) {
 
     const updatedSettings = await request.json()
     
-    // Validate required fields
     if (!updatedSettings.appName || !updatedSettings.appVersion) {
       return NextResponse.json(
         { error: 'App name and version are required' },
@@ -93,7 +80,6 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Validate numeric fields
     if (updatedSettings.sessionTimeout < 5 || updatedSettings.sessionTimeout > 1440) {
       return NextResponse.json(
         { error: 'Session timeout must be between 5 and 1440 minutes' },
@@ -115,10 +101,8 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Update settings
     systemSettings = { ...systemSettings, ...updatedSettings }
 
-    // In a real application, you would save these to a database
     console.log('System settings updated:', systemSettings)
 
     return NextResponse.json({
@@ -135,10 +119,8 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE - Reset settings to defaults
 export async function DELETE(request: NextRequest) {
   try {
-    // Check if user is admin
     const authCheck = await fetch(new URL('/api/admin/auth/check', request.url), {
       headers: {
         cookie: request.headers.get('cookie') || '',
@@ -149,7 +131,6 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Reset to default settings
     systemSettings = {
       appName: 'EcoReward Platform',
       appVersion: '1.0.0',

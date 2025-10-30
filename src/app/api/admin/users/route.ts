@@ -55,44 +55,34 @@ export async function DELETE(request: NextRequest) {
 
     const userIdInt = parseInt(userId)
 
-    // Check if user exists
     const existingUser = await db.select().from(Users).where(eq(Users.id, userIdInt)).limit(1)
     if (existingUser.length === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // Delete related data first (cascade deletion without transactions)
     console.log(`Starting deletion process for user ID: ${userIdInt}`)
 
     try {
-      // 1. Delete notifications (depends on user)
       await db.delete(Notifications).where(eq(Notifications.userId, userIdInt))
       console.log(`Deleted notifications for user ${userIdInt}`)
 
-      // 2. Delete transactions (depends on user)
       await db.delete(Transactions).where(eq(Transactions.userId, userIdInt))
       console.log(`Deleted transactions for user ${userIdInt}`)
 
-      // 3. Delete rewards (depends on user)
       await db.delete(Rewards).where(eq(Rewards.userId, userIdInt))
       console.log(`Deleted rewards for user ${userIdInt}`)
 
-      // 4. Delete collected wastes where user is the collector
       await db.delete(CollectedWastes).where(eq(CollectedWastes.collectorId, userIdInt))
       console.log(`Deleted collected wastes for collector ${userIdInt}`)
 
-      // 5. Update reports to remove collector references, then delete user's reports
-      // First, update reports where this user was a collector (set collectorId to null)
       await db.update(Reports)
         .set({ collectorId: null })
         .where(eq(Reports.collectorId, userIdInt))
       console.log(`Updated reports to remove collector reference for user ${userIdInt}`)
 
-      // Then delete reports created by this user
       await db.delete(Reports).where(eq(Reports.userId, userIdInt))
       console.log(`Deleted reports created by user ${userIdInt}`)
 
-      // 6. Finally, delete the user
       const deletedUser = await db.delete(Users).where(eq(Users.id, userIdInt)).returning()
       console.log(`Deleted user ${userIdInt}`)
 
@@ -126,7 +116,6 @@ export async function DELETE(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    // Check admin authentication
     const adminSession = request.cookies.get('admin_session')?.value
     if (!adminSession) {
       return NextResponse.json({ error: 'Admin authentication required' }, { status: 401 })
@@ -139,23 +128,19 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
     }
 
-    // Validate required fields
     if (!name || !email) {
       return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       return NextResponse.json({ error: 'Invalid email format' }, { status: 400 })
     }
 
-    // Validate balance if provided
     if (balance !== undefined && (isNaN(balance) || balance < 0)) {
       return NextResponse.json({ error: 'Balance must be a non-negative number' }, { status: 400 })
     }
 
-    // Check if user exists
     const existingUser = await db.select().from(Users)
       .where(eq(Users.id, id))
       .limit(1)
@@ -164,7 +149,6 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // Check if email is already taken by another user
     const emailCheck = await db.select().from(Users)
       .where(eq(Users.email, email))
       .limit(1)
@@ -173,7 +157,6 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Email already exists' }, { status: 400 })
     }
 
-    // Prepare update data
     const updateData: any = {
       name,
       email,
@@ -181,12 +164,10 @@ export async function PATCH(request: NextRequest) {
       updatedAt: new Date()
     }
 
-    // Hash new password if provided
     if (password && password.trim() !== '') {
       updateData.password_hash = await bcrypt.hash(password, 10)
     }
 
-    // Update user
     const updatedUser = await db.update(Users)
       .set(updateData)
       .where(eq(Users.id, id))
@@ -196,7 +177,6 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to update user' }, { status: 500 })
     }
 
-    // Remove password hash from response and serialize dates
     const { password: _, ...userWithoutPassword } = updatedUser[0]
     const serializedUser = {
       ...userWithoutPassword,
@@ -219,7 +199,6 @@ export async function PATCH(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check admin authentication
     const adminSession = request.cookies.get('admin_session')?.value
     if (!adminSession) {
       return NextResponse.json({ error: 'Admin authentication required' }, { status: 401 })
@@ -228,18 +207,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { name, email, password, balance = 0 } = body
 
-    // Validate required fields
     if (!name || !email || !password) {
       return NextResponse.json({ error: 'Name, email, and password are required' }, { status: 400 })
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       return NextResponse.json({ error: 'Invalid email format' }, { status: 400 })
     }
 
-    // Check if email already exists
     const existingUser = await db.select().from(Users)
       .where(eq(Users.email, email))
       .limit(1)
@@ -248,10 +224,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email already exists' }, { status: 400 })
     }
 
-    // Hash password (using bcrypt for security)
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    // Create new user
     const newUser = await db.insert(Users)
       .values({
         name,
@@ -267,7 +241,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
     }
 
-    // Remove password hash from response and serialize dates
     const { password: _, ...userWithoutPassword } = newUser[0]
     const serializedUser = {
       ...userWithoutPassword,

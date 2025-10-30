@@ -50,11 +50,9 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
-  // Fetch dashboard data function
   const fetchDashboardData = async () => {
     
     try {
-      // Get admin info
       const adminResponse = await fetch('/api/admin/auth/check', {
         credentials: 'include'
       })
@@ -63,7 +61,6 @@ export default function AdminDashboard() {
         setAdminData(adminInfo.admin)
       }
 
-      // Fetch real-time stats with cache busting
       const timestamp = Date.now()
       const statsResponse = await fetch(`/api/admin/stats?t=${timestamp}`, { 
         credentials: 'include',
@@ -74,7 +71,6 @@ export default function AdminDashboard() {
       if (statsResponse.ok) {
         const platformStats = await statsResponse.json()
         
-        // Also get admin-specific data for user management
         const [usersRes, collectionTasksRes] = await Promise.all([
           fetch(`/api/admin/users?t=${timestamp}`, { 
             credentials: 'include',
@@ -105,7 +101,6 @@ export default function AdminDashboard() {
           totalTokensDistributed: usersArray.reduce((sum: number, user: any) => sum + (user.balance || 0), 0)
         })
 
-        // Only log stats in development mode and limit frequency
         if (process.env.NODE_ENV === 'development') {
           console.log('Dashboard stats updated:', {
             users: platformStats.totalUsers,
@@ -130,7 +125,6 @@ export default function AdminDashboard() {
     fetchDashboardData()
   }, [])
 
-  // Auto-refresh every 10 seconds for real-time updates
   useEffect(() => {
     const interval = setInterval(() => {
       fetchDashboardData()

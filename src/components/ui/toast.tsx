@@ -16,7 +16,7 @@ export function Toast({ message, type = 'info', duration = 4000, onClose, isVisi
     if (isVisible) {
       const timer = setTimeout(() => {
         setIsLeaving(true);
-        setTimeout(onClose, 300); // Animation duration
+        setTimeout(onClose, 300); 
       }, duration);
 
       return () => clearTimeout(timer);

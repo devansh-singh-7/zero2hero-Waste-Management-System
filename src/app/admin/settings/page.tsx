@@ -35,38 +35,32 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 interface SystemSettings {
-  // Application Settings
   appName: string
   appVersion: string
   maintenanceMode: boolean
   registrationEnabled: boolean
   
-  // Security Settings
-  sessionTimeout: number // in minutes
+  sessionTimeout: number 
   maxLoginAttempts: number
   passwordMinLength: number
   requireEmailVerification: boolean
   twoFactorAuth: boolean
   
-  // Notification Settings
   emailNotifications: boolean
   smsNotifications: boolean
   pushNotifications: boolean
   adminAlerts: boolean
   
-  // Reward System Settings
   baseRewardPoints: number
   bonusMultiplier: number
   referralBonus: number
   levelUpThreshold: number
   
-  // Data Management
   dataRetentionDays: number
   autoBackup: boolean
   backupFrequency: 'daily' | 'weekly' | 'monthly'
   analyticsEnabled: boolean
   
-  // API Settings
   rateLimitEnabled: boolean
   maxRequestsPerMinute: number
   apiKeyRequired: boolean
@@ -76,38 +70,35 @@ export default function AdminSettings() {
   const router = useRouter()
   const { alertState, showSuccess, showError, showConfirm, closeAlert } = useAlert()
   const [settings, setSettings] = useState<SystemSettings>({
-    // Application Settings
+    
     appName: 'EcoReward Platform',
     appVersion: '1.0.0',
     maintenanceMode: false,
     registrationEnabled: true,
     
-    // Security Settings
+    
     sessionTimeout: 60,
     maxLoginAttempts: 5,
     passwordMinLength: 8,
     requireEmailVerification: false,
     twoFactorAuth: false,
     
-    // Notification Settings
+    
     emailNotifications: true,
     smsNotifications: false,
     pushNotifications: true,
     adminAlerts: true,
     
-    // Reward System Settings
     baseRewardPoints: 10,
     bonusMultiplier: 1.5,
     referralBonus: 50,
     levelUpThreshold: 100,
     
-    // Data Management
     dataRetentionDays: 365,
     autoBackup: true,
     backupFrequency: 'daily',
     analyticsEnabled: true,
     
-    // API Settings
     rateLimitEnabled: true,
     maxRequestsPerMinute: 100,
     apiKeyRequired: false,

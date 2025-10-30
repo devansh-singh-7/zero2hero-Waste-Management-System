@@ -56,7 +56,6 @@ export default function UserManagement() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Get admin info
         const adminResponse = await fetch('/api/admin/auth/check', {
           credentials: 'include'
         })
@@ -65,7 +64,6 @@ export default function UserManagement() {
           setAdminData(adminInfo.admin)
         }
 
-        // Fetch users
         const usersResponse = await fetch('/api/admin/users', {
           credentials: 'include'
         })
@@ -156,7 +154,7 @@ export default function UserManagement() {
     setEditFormData({
       name: user.name,
       email: user.email,
-      password: '', // Keep password empty for security
+      password: '', 
       balance: Number(user.balance) || 0
     })
     setShowEditModal(true)
@@ -165,7 +163,6 @@ export default function UserManagement() {
   const handleUpdateUser = async () => {
     if (!editingUser) return
 
-    // Validate form data
     if (!editFormData.name.trim() || !editFormData.email.trim()) {
       toast.error('Name and email are required')
       return
@@ -185,7 +182,6 @@ export default function UserManagement() {
         balance: editFormData.balance
       }
 
-      // Only include password if it's provided
       if (editFormData.password.trim()) {
         updateData.password = editFormData.password.trim()
       }
@@ -203,7 +199,6 @@ export default function UserManagement() {
         const result = await response.json()
         const updatedUser = result.user
 
-        // Update the user in both arrays
         setUsers(prev => prev.map(user => 
           user.id === editingUser.id ? updatedUser : user
         ))

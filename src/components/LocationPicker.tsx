@@ -22,7 +22,6 @@ const markerIcon = new Icon({
   shadowAnchor: [12, 41]
 });
 
-// Component to handle map centering
 function MapCenterHandler({ center }: { center: [number, number] }) {
   const map = useMap();
   
@@ -41,7 +40,6 @@ function LocationMarker({ onLocationSelect, selectedLocation, setMapCenter }: {
   const map = useMapEvents({
     click(e) {
       const newPos = { lat: e.latlng.lat, lng: e.latlng.lng };
-      // Center the map on the clicked location
       setMapCenter([newPos.lat, newPos.lng]);
       map.setView([newPos.lat, newPos.lng], map.getZoom());
       onLocationSelect(newPos);
@@ -65,13 +63,12 @@ export default function LocationPicker({ onLocationSelect, initialLocation }: Lo
   const [isSearching, setIsSearching] = useState(false)
   const [isGettingLocation, setIsGettingLocation] = useState(false)
   const [mapCenter, setMapCenter] = useState<[number, number]>(
-    initialLocation ? [initialLocation.lat, initialLocation.lng] : [20.5937, 78.9629] // Default to India center
+    initialLocation ? [initialLocation.lat, initialLocation.lng] : [20.5937, 78.9629] 
   )
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(
     initialLocation || null
   )
 
-  // Remove automatic geolocation - users must click button to get location
 
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -143,7 +140,7 @@ export default function LocationPicker({ onLocationSelect, initialLocation }: Lo
       console.error('Error searching location:', error);
     } finally {
       setIsSearching(false);
-      setSuggestions([]); // Clear suggestions after search
+      setSuggestions([]); 
     }
   };
 
@@ -156,7 +153,7 @@ export default function LocationPicker({ onLocationSelect, initialLocation }: Lo
     setSelectedLocation(location);
     onLocationSelect(location);
     setSearchInput(suggestion.display_name);
-    setSuggestions([]); // Clear suggestions after selection
+    setSuggestions([]); 
   };
 
   return (

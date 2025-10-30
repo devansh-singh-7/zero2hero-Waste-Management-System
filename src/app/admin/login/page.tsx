@@ -31,15 +31,12 @@ export default function AdminLogin() {
       
       const data = await res.json()
       
-      // Store admin session
       localStorage.setItem('adminEmail', data.admin.email)
       
       toast.success('Admin login successful!')
       
-      // Redirect to admin console
       router.push('/admin')
       
-      // Force refresh
       setTimeout(() => {
         window.location.href = '/admin'
       }, 500)

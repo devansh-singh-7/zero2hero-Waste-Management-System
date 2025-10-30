@@ -14,7 +14,6 @@ export const getDb = async () => {
     throw new Error('Database not initialized');
   }
   
-  // Test database connection
   try {
     await db.select().from(Users).limit(1);
   } catch (error) {
@@ -25,7 +24,6 @@ export const getDb = async () => {
   return db;
 };
 
-// Report operations
 interface CreateReportInput {
   userId: number;
   location: string;
@@ -58,7 +56,6 @@ export const createReport = async ({
   return report;
 };
 
-// Basic user operations
 export const getUserByEmail = async (email: string) => {
   if (!email) {
     console.error("No email provided to getUserByEmail");
@@ -91,17 +88,15 @@ export const createUser = async (email: string, name: string) => {
   try {
     const database = await getDb();
     
-    // First, check if user exists
     const existing = await getUserByEmail(email);
     if (existing) {
       return existing;
     }
 
-    // Create new user
     const [user] = await database.insert(Users).values({
       email,
       name,
-      password: '', // Provide a default or generated hash here
+      password: '', 
       createdAt: new Date(),
       updatedAt: new Date()
     }).returning({

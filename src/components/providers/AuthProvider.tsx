@@ -26,7 +26,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuth = useCallback(async () => {
     try {
-      // Check localStorage first for faster initial load
       const cachedUser = localStorage.getItem('user');
       if (cachedUser) {
         try {
@@ -67,7 +66,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Check if user is logged in on mount
     checkAuth();
   }, [checkAuth]);
 

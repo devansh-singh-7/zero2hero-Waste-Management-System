@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
-// Hardcoded admin credentials
 const ADMIN_CREDENTIALS = [
   {
     id: 1,
@@ -16,12 +15,10 @@ export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
 
-    // Validate input
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 422 })
     }
 
-    // Find admin user
     const admin = ADMIN_CREDENTIALS.find(
       cred => cred.email === email && cred.password === password
     )
@@ -30,7 +27,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid admin credentials' }, { status: 401 })
     }
 
-    // Create response with admin data (excluding password)
     const adminData = {
       id: admin.id,
       email: admin.email,
@@ -42,13 +38,12 @@ export async function POST(request: NextRequest) {
       message: 'Admin login successful'
     })
 
-    // Set admin session cookie
     response.cookies.set('admin_session', JSON.stringify(adminData), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 8 * 60 * 60 // 8 hours
+      maxAge: 8 * 60 * 60 
     })
 
     console.log('Admin login successful for:', admin.email)

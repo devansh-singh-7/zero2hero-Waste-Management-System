@@ -12,18 +12,15 @@ export function NavigationLoader() {
     const handleStart = () => setLoading(true);
     const handleComplete = () => setLoading(false);
 
-    // Simple loading state management for navigation
     let timeoutId: NodeJS.Timeout;
 
     const startLoading = () => {
       handleStart();
-      // Auto-complete after a short delay if no route change detected
       timeoutId = setTimeout(() => {
         handleComplete();
       }, 1000);
     };
 
-    // Override router methods to trigger loading
     const originalPush = router.push;
     const originalReplace = router.replace;
 
