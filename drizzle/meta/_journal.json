@@ -1,0 +1,12 @@
+{
+  "version": "5",
+  "dialect": "pg",
+  "entries": [
+    {
+      "tag": "0010_add_user_provider",
+      "description": "Add user provider columns",
+      "hash": "43e9183ccf4b3e4a8e7f4f6b3e4a8e7f",
+      "created": "2025-08-24T12:00:00.000Z"
+    }
+  ]
+}
