@@ -4,10 +4,9 @@ import { Trash2, MapPin, CheckCircle, Clock, ArrowRight, Camera, Upload, Loader,
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'react-hot-toast'
-import { GoogleGenerativeAI } from "@google/generative-ai"
-import dynamic from 'next/dynamic'
 import AdminProtected from '@/components/AdminProtected'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 
 const LocationPicker = dynamic(() => import('@/components/LocationPicker'), {
   ssr: false,
@@ -18,9 +17,6 @@ const WasteCollectionMap = dynamic(() => import('@/components/WasteCollectionMap
   ssr: false,
   loading: () => <p>Loading map...</p>
 })
-
-// Make sure to set your Gemini API key in your environment variables
-const geminiApiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
 interface VerificationResult {
   wasteTypeMatch: boolean;
@@ -100,12 +96,12 @@ export default function AdminCollectionsPage() {
           newStatus,
         }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         throw new Error(errorData.details || errorData.error || `HTTP ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('Error updating task:', error);
@@ -165,7 +161,7 @@ export default function AdminCollectionsPage() {
 
     try {
       await updateTask(taskId, 'in_progress');
-      
+
       setTasks(prevTasks =>
         prevTasks.map(task =>
           task.id === taskId
@@ -173,7 +169,7 @@ export default function AdminCollectionsPage() {
             : task
         )
       );
-      
+
       toast.success('Task accepted! You can now collect this waste.');
     } catch (error) {
       console.error('Error accepting task:', error);
@@ -212,48 +208,33 @@ export default function AdminCollectionsPage() {
 
         // Convert image to base64 for Gemini AI verification
         const base64Image = await fileToBase64(imageFile);
-        
-        if (geminiApiKey) {
-          const genAI = new GoogleGenerativeAI(geminiApiKey);
-          const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-          const task = tasks.find(t => t.id === taskId);
-          if (task) {
-            const prompt = `Analyze this image and determine if it matches the reported waste collection task:
-            - Expected waste type: ${task.wasteType}
-            - Expected amount: ${task.amount}
-            
-            Please respond with a JSON object containing:
-            - wasteTypeMatch: boolean (true if the waste type matches)
-            - quantityMatch: boolean (true if the quantity appears reasonable)
-            - confidence: number (0-1 confidence score)
-            - notes: string (brief explanation)`;
-
-            try {
-              const result = await model.generateContent([
-                prompt,
-                {
-                  inlineData: {
-                    data: base64Image.split(',')[1],
-                    mimeType: imageFile.type
-                  }
+        const task = tasks.find(t => t.id === taskId);
+        if (task) {
+          try {
+            const verifyResponse = await fetch('/api/admin/verify-collection', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                image: base64Image,
+                task: {
+                  wasteType: task.wasteType,
+                  amount: task.amount
                 }
-              ]);
+              })
+            });
 
-              const responseText = result.response.text();
-              
-              try {
-                const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-                if (jsonMatch) {
-                  verificationResult = JSON.parse(jsonMatch[0]);
-                }
-              } catch (parseError) {
-                console.error('Error parsing AI response:', parseError);
-              }
-            } catch (aiError) {
-              console.error('Error with AI verification:', aiError);
-              toast.error('AI verification failed, but task will be marked as completed');
+            if (verifyResponse.ok) {
+              const verifyData = await verifyResponse.json();
+              verificationResult = verifyData.verificationResult;
+            } else {
+              console.error('Verification API failed');
+              toast.error('AI verification service unavailable');
             }
+          } catch (error) {
+            console.error('Error calling verification API:', error);
           }
         }
       }
@@ -276,22 +257,22 @@ export default function AdminCollectionsPage() {
       }
 
       const result = await response.json();
-      
+
       setTasks(prevTasks =>
         prevTasks.map(task =>
           task.id === taskId
-            ? { 
-                ...task, 
-                status: 'completed' as const, 
-                imageUrl: imageUrl,
-                verificationResult: verificationResult 
-              }
+            ? {
+              ...task,
+              status: 'completed' as const,
+              imageUrl: imageUrl,
+              verificationResult: verificationResult
+            }
             : task
         )
       );
 
       toast.success(result.message || 'Task completed successfully!');
-      
+
       if (verificationResult && !verificationResult.wasteTypeMatch) {
         toast.error('AI detected potential mismatch in waste type - please review');
       }
@@ -332,7 +313,7 @@ export default function AdminCollectionsPage() {
 
   const wasteTypeColors: { [key: string]: string } = {
     'plastic': 'bg-blue-100 text-blue-800',
-    'organic': 'bg-green-100 text-green-800', 
+    'organic': 'bg-green-100 text-green-800',
     'metal': 'bg-gray-100 text-gray-800',
     'paper': 'bg-yellow-100 text-yellow-800',
     'glass': 'bg-purple-100 text-purple-800',
@@ -465,11 +446,11 @@ export default function AdminCollectionsPage() {
               >
                 Previous
               </Button>
-              
+
               <span className="text-sm text-gray-600 mx-4">
                 Page {currentPage} of {totalPages}
               </span>
-              
+
               <Button
                 variant="outline"
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
@@ -497,15 +478,15 @@ interface TaskCardProps {
   adminId?: number;
 }
 
-function TaskCard({ 
-  task, 
-  wasteTypeColors, 
-  hoveredWasteType, 
-  setHoveredWasteType, 
-  onAcceptTask, 
-  onCompleteTask, 
+function TaskCard({
+  task,
+  wasteTypeColors,
+  hoveredWasteType,
+  setHoveredWasteType,
+  onAcceptTask,
+  onCompleteTask,
   isAdmin,
-  adminId 
+  adminId
 }: TaskCardProps) {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -565,7 +546,7 @@ function TaskCard({
             <MapPin className="h-4 w-4 text-gray-500" />
             <span className="font-medium text-gray-900">{task.location}</span>
           </div>
-          
+
           {/* User Information */}
           {(task.userName || task.userEmail) && (
             <div className="flex items-center gap-2 mb-2 text-sm text-gray-600">
@@ -578,23 +559,22 @@ function TaskCard({
               )}
             </div>
           )}
-          
+
           <div className="flex items-center gap-4 mb-3">
             <span
-              className={`px-3 py-1 rounded-full text-sm font-medium cursor-pointer transition-colors ${
-                wasteTypeColors[task.wasteType.toLowerCase()] || 'bg-gray-100 text-gray-800'
-              } ${hoveredWasteType === task.wasteType ? 'ring-2 ring-green-500' : ''}`}
+              className={`px-3 py-1 rounded-full text-sm font-medium cursor-pointer transition-colors ${wasteTypeColors[task.wasteType.toLowerCase()] || 'bg-gray-100 text-gray-800'
+                } ${hoveredWasteType === task.wasteType ? 'ring-2 ring-green-500' : ''}`}
               onMouseEnter={() => setHoveredWasteType(task.wasteType)}
               onMouseLeave={() => setHoveredWasteType(null)}
             >
               {task.wasteType}
             </span>
-            
+
             <div className="flex items-center text-gray-600">
               <Weight className="h-4 w-4 mr-1" />
               <span className="text-sm">{task.amount}</span>
             </div>
-            
+
             <div className="flex items-center text-gray-600">
               <Calendar className="h-4 w-4 mr-1" />
               <span className="text-sm">
@@ -609,7 +589,7 @@ function TaskCard({
             </div>
           </div>
         </div>
-        
+
         <div className="flex flex-col items-end gap-2">
           <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 ${getStatusColor(task.status)}`}>
             {getStatusIcon(task.status)}
@@ -648,9 +628,9 @@ function TaskCard({
         <div className="mb-4">
           <h4 className="font-medium text-gray-900 mb-2">Selected Photo</h4>
           <div className="flex items-center gap-3">
-            <img 
-              src={imagePreview} 
-              alt="Selected collection photo" 
+            <img
+              src={imagePreview}
+              alt="Selected collection photo"
               className="w-24 h-24 object-cover rounded-lg border"
             />
             <div className="text-sm text-gray-600">
@@ -671,7 +651,7 @@ function TaskCard({
             Accept Task
           </Button>
         )}
-        
+
         {task.status === 'in_progress' && task.collectorId === adminId && (
           <>
             <div className="flex-1">
@@ -682,9 +662,9 @@ function TaskCard({
                 className="hidden"
                 id={`file-input-${task.id}`}
               />
-              <Button 
-                variant="outline" 
-                className="w-full" 
+              <Button
+                variant="outline"
+                className="w-full"
                 type="button"
                 onClick={triggerFileInput}
                 disabled={isUploading}
@@ -693,7 +673,7 @@ function TaskCard({
                 {isUploading ? 'Uploading...' : (imageFile ? 'Change Photo' : 'Add Photo')}
               </Button>
             </div>
-            
+
             <Button
               onClick={() => onCompleteTask(task.id, imageFile)}
               disabled={!imageFile}
@@ -704,7 +684,7 @@ function TaskCard({
             </Button>
           </>
         )}
-        
+
         {task.status === 'completed' && (
           <Button variant="outline" disabled className="flex-1">
             <CheckCircle className="h-4 w-4 mr-2" />
