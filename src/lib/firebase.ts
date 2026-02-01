@@ -36,13 +36,18 @@ export const signInWithGoogle = async () => {
         const result = await signInWithPopup(auth, googleProvider);
         const user = result.user;
 
-        // Sync with backend database
+        // Get the Firebase ID token for secure server-side verification
+        const idToken = await user.getIdToken();
+
+        // Sync with backend database - send ID token in Authorization header
         const response = await fetch('/api/auth/firebase-sync', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`,
             },
             body: JSON.stringify({
+                // These are sent for backwards compatibility, but server uses token
                 firebaseUid: user.uid,
                 email: user.email,
                 name: user.displayName || user.email?.split('@')[0] || 'User',

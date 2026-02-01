@@ -33,6 +33,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify current password
+    if (!userData[0].password) {
+      return NextResponse.json({ error: 'User has no password set' }, { status: 400 });
+    }
+
+    // safe property access now
     const isCurrentPasswordValid = await verifyPassword(currentPassword, userData[0].password);
     if (!isCurrentPasswordValid) {
       return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });

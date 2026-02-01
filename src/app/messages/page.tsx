@@ -2,7 +2,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/providers/AuthProvider'
-import { GoogleGenerativeAI } from '@google/generative-ai'
 import { Send, Loader2 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import AuthGuard from '@/components/AuthGuard'
@@ -39,11 +38,6 @@ function MessagesPageContent() {
   };
 
   useEffect(() => {
-    const API_KEY = process.env.GEMINI_API_KEY
-    console.log('API Key:', API_KEY ? 'Present' : 'Missing')
-  }, [])
-
-  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
@@ -64,20 +58,23 @@ function MessagesPageContent() {
     setInput('')
 
     try {
-      const API_KEY = process.env.GEMINI_API_KEY
-      if (!API_KEY) throw new Error('API key is missing')
-
-      const genAI = new GoogleGenerativeAI(API_KEY)
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
-
-      console.log('Sending message:', newMessage.content)
-      const result = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: newMessage.content }] }]
+      // Call server-side API route instead of using Gemini directly
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ message: newMessage.content }),
       });
-      const responseText = result.response.text();
-      console.log('Received response:', responseText)
 
-      const assistantMessage: Message = { role: 'assistant', content: responseText }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to get response');
+      }
+
+      const data = await response.json();
+      const assistantMessage: Message = { role: 'assistant', content: data.response }
       setMessages(prev => [...prev, assistantMessage])
     } catch (err) {
       console.error('Error:', err)

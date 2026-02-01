@@ -1,11 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  // TypeScript and ESLint errors are no longer ignored in production
   experimental: {
     optimizePackageImports: [
       'react-icons',
@@ -24,10 +19,6 @@ const nextConfig = {
   },
   poweredByHeader: false,
   compress: true,
-  env: {
-    DATABASE_URL: process.env.DATABASE_URL,
-    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-  },
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {

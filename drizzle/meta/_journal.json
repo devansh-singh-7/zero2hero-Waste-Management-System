@@ -1,12 +1,13 @@
 {
-  "version": "5",
-  "dialect": "pg",
+  "version": "7",
+  "dialect": "postgresql",
   "entries": [
     {
-      "tag": "0010_add_user_provider",
-      "description": "Add user provider columns",
-      "hash": "43e9183ccf4b3e4a8e7f4f6b3e4a8e7f",
-      "created": "2025-08-24T12:00:00.000Z"
+      "idx": 0,
+      "version": "7",
+      "when": 1769967284274,
+      "tag": "0000_volatile_trish_tilby",
+      "breakpoints": true
     }
   ]
 }
